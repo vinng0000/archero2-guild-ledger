@@ -7,7 +7,7 @@ A free tool for Archero 2 guild officers. Record the **Guild Members** screen an
 
 **How it works:**
 - The page runs entirely in your browser. There are no accounts and no server.
-- **Reading recordings:** Claude, an AI model by Anthropic, reads the frames through your own Anthropic API key. Add the key once in **Settings**; it costs roughly $0.50 per day of recordings.
+- **Reading recordings:** Claude, an AI model by Anthropic, reads the frames through your own Anthropic API key. Add the key once in **Settings**; it usually costs about 2 cents per day of recordings.
 - **Your records:** saved only in your browser, on that device.
 
 Questions or bug reports: Discord **vinn0127**.

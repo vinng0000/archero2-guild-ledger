@@ -12,7 +12,7 @@
 (() => {
   const STORE_KEY = "guild-ledger:db:v2";
   const SETTINGS_KEY = "guild-ledger:settings";
-  const MODEL = "claude-opus-5-5";
+  const MODEL = "claude-haiku-5-5"; // the page names the model per call; this is the fallback
 
   /* ---------- db: a small document store with live collection snapshots ---------- */
   let store = {};
@@ -86,7 +86,7 @@
     const status = e?.status, msg = e?.error?.error?.message ?? e?.message ?? String(e);
     if (e?.name === "APIUserAbortError" || e?.name === "AbortError") return { code: "cancelled" };
     if (status === 401) return { code: "not_granted", detail: "Anthropic rejected the API key. Check it in Settings." };
-    if (status === 403 || status === 404) return { code: "not_granted", detail: "This API key can't use Claude Opus 5.5. Check the key's workspace in the Claude Console." };
+    if (status === 403 || status === 404) return { code: "not_granted", detail: "This API key can't use the Claude models this page needs (Haiku 5.5 and Opus 5.5). Check the key's workspace in the Claude Console." };
     if (status === 429) return { code: "rate_limited", detail: "Anthropic's rate limit was hit. Wait a minute, then press Try again." };
     if (status === 400 && /credit balance/i.test(msg)) return { code: "not_granted", detail: "The API account is out of credit. Add credit in the Claude Console." };
     if (status === 413) return { code: "image_rejected", detail: "These frames were too large to send." };
@@ -94,27 +94,33 @@
     if (status == null) return { code: "network", detail: "Couldn't reach Anthropic. Check your connection." };
     return { code: "upstream_error", detail: msg };
   }
-  async function json(prompt, opts = {}) {
+  /** One Claude call; resolves like claude.ai's sample(): { text, truncated, modelApplied }. */
+  async function ask(prompt, opts = {}) {
     const c = await anthropic();
+    const model = opts.model || MODEL;
     const content = [];
     for (const img of opts.images ?? []) content.push({ type: "image", source: { type: "base64", media_type: img.type || "image/jpeg", data: await base64(img) } });
     content.push({ type: "text", text: `${prompt}\n\nReply with only the JSON object, no other text.` });
     let res;
     try {
       res = await c.messages.create({
-        model: MODEL,
+        model,
         max_tokens: 16000,
         output_config: { effort: opts.modelTier === "complex" ? "medium" : "low" },
         messages: [{ role: "user", content }],
       }, { signal: opts.signal });
     } catch (e) { throw toPageError(e); }
     if (res.stop_reason === "refusal") throw { code: "refused" };
-    if (res.stop_reason === "max_tokens") throw { code: "invalid_json", detail: "The answer was cut off. Press Try again." };
     const text = res.content.filter((b) => b.type === "text").map((b) => b.text).join("");
+    return { text, truncated: res.stop_reason === "max_tokens", modelApplied: opts.model ? model : undefined, modelTierApplied: "default" };
+  }
+  async function json(prompt, opts) {
+    const { text, truncated } = await ask(prompt, opts);
+    if (truncated) throw { code: "invalid_json", detail: "The answer was cut off. Press Try again." };
     const body = text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1);
     try { return JSON.parse(body); } catch { throw { code: "invalid_json" }; }
   }
-  const sample = Object.freeze(Object.assign((...a) => json(...a), { json, limits: async () => ({ images: { maxCount: 6 } }) }));
+  const sample = Object.freeze(Object.assign((...a) => ask(...a), { json, limits: async () => ({ images: { maxCount: 6 } }) }));
 
   window.claude = Object.freeze({ use: async (name) => ({ db, user, sample })[name] ?? null });
 })();
