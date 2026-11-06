@@ -12,6 +12,8 @@ A free tool for Archero 2 guild officers. Record the **Guild Members** screen an
 
 Questions or bug reports: Discord **vinn0127**.
 
+Like it? You can [buy me a coffee on Ko-fi](https://ko-fi.com/vinng0000). Totally optional ♥
+
 Archero 2 is a trademark of Habby Pte. Ltd. Game data, names, images, and assets are © Habby Pte. Ltd. Guild Ledger is an unofficial fan-run community tool and is not affiliated with, endorsed, or sponsored by Habby.
 
 Copyright (c) 2026 the Guild Ledger author. All rights reserved.
