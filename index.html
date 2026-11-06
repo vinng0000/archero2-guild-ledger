@@ -1,0 +1,1683 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Officers' API keys live in this browser: only Anthropic's API may be contacted, and only this site's scripts may run. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://api.anthropic.com; img-src 'self' blob: data:; media-src blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Guild Ledger · Archero 2 guild tracker</title>
+<meta name="description" content="Free Archero 2 guild tracker: member power, contribution, daily Monster Invasion attempts and damage rankings, read from a screen recording.">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Guild Ledger">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#f0b429">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Guild Ledger">
+<meta property="og:title" content="Guild Ledger · Archero 2 guild tracker">
+<meta property="og:description" content="Free guild tracker for Archero 2: member power, contribution, Monster Invasion attempts and damage rankings, read from one screen recording.">
+<meta name="twitter:card" content="summary">
+<meta property="og:url" content="https://vinng0000.github.io/archero2-guild-ledger/">
+<meta property="og:image" content="https://vinng0000.github.io/archero2-guild-ledger/icon-512.png">
+<script>window.GL_SITE = true;</script>
+<script src="runtime.js"></script>
+</head>
+<body>
+<!--
+  Guild Ledger (Archero 2 guild tracker)
+  Copyright (c) 2026 the Guild Ledger author. All rights reserved.
+  This source code, design and text are proprietary. No permission is granted to copy, modify,
+  reproduce, republish or create derivative works from any part of it, by any means, including
+  automated or AI tools, without written permission from the author.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700&display=swap">
+<style>
+/* Layout: sticky guild bar + tab views; summary tiles, then charts, then tables. Indigo = guild banner, gold = podium. */
+:root {
+  --bg: #f4f3f8; --surface: #ffffff; --surface-2: #ecebf3; --line: #dcdae8;
+  --fg: #17152b; --muted: #5a5873; --faint: #8b89a3;
+  --accent: #3b3fc4; --accent-ink: #ffffff; --gold: #a86f00;
+  --good: #1a7f45; --bad: #c4314b; --warn-bg: #fff3d1; --warn-fg: #6b4a00;
+  --series: #3b3fc4; --grid: #e6e4ef;
+  --display: "Lilita One", "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif;
+  --body: "Nunito Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121120; --surface: #1b1a2c; --surface-2: #24233a; --line: #33314d;
+    --fg: #eeedf7; --muted: #b6b4cc; --faint: #85839f;
+    --accent: #8489ff; --accent-ink: #11102a; --gold: #f0b429;
+    --good: #4cc27a; --bad: #ff6b81; --warn-bg: #3b300f; --warn-fg: #f3d488;
+    --series: #8489ff; --grid: #2a2942; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121120; --surface: #1b1a2c; --surface-2: #24233a; --line: #33314d;
+  --fg: #eeedf7; --muted: #b6b4cc; --faint: #85839f;
+  --accent: #8489ff; --accent-ink: #11102a; --gold: #f0b429;
+  --good: #4cc27a; --bad: #ff6b81; --warn-bg: #3b300f; --warn-fg: #f3d488;
+  --series: #8489ff; --grid: #2a2942; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 14px; line-height: 1.45; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line); }
+header.bar .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; padding-block: 10px; }
+/* Brand: game icon + gold, outlined wordmark like a game title, with an "ARCHERO 2" tag underneath. */
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.brand img { width: 40px; height: 40px; border-radius: 11px; box-shadow: 0 0 0 2px #ffd23f, 0 4px 14px rgba(255, 190, 40, 0.35); transition: transform 0.15s; }
+.brand:hover img { transform: rotate(-6deg) scale(1.06); }
+.brand .words { display: grid; line-height: 1; white-space: nowrap; }
+.brand a { text-decoration: none; }
+.guild-chip { display: inline-flex; align-items: center; gap: 3px; padding: 2px 5px 2px 7px; min-height: 0 !important; border-radius: 5px; font: inherit; letter-spacing: inherit; text-transform: inherit; color: var(--muted);
+  background: color-mix(in srgb, var(--surface-2) 70%, transparent); border: 1px solid color-mix(in srgb, var(--muted) 30%, transparent); cursor: pointer; }
+.guild-chip:hover { color: var(--fg); border-color: color-mix(in srgb, var(--muted) 60%, transparent); background: var(--surface-2); }
+.guild-chip svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.guild-list { display: grid; gap: 6px; }
+.guild-list button { display: flex; justify-content: space-between; align-items: center; gap: 10px; text-align: left; width: 100%; }
+.guild-list button[aria-current="true"] { border-color: var(--accent); }
+.brand .title { font-family: var(--display); font-size: 23px; letter-spacing: 0.8px; text-transform: uppercase;
+  background: linear-gradient(180deg, #fff6c2 0%, #ffd23f 45%, #f39b0b 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
+  -webkit-text-stroke: 1.2px #6b3a00; paint-order: stroke fill; filter: drop-shadow(0 2px 0 #4a2600); }
+.brand .tag { display: flex; align-items: center; gap: 6px; margin-top: 3px; font-family: var(--body); font-size: 10px; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase; color: var(--muted); }
+.brand .tag b { font-family: var(--display); font-weight: 400; letter-spacing: 1px; font-size: 11px; padding: 1px 7px 0; border-radius: 4px; background: linear-gradient(180deg, #4cd964, #1f9d3a); color: #fff; text-shadow: 0 1px 0 #0d5a1f; }
+nav.tabs { display: flex; flex-wrap: wrap; gap: 2px; }
+nav.tabs a { padding: 6px 10px; border-radius: 8px; color: var(--muted); text-decoration: none; font-weight: 600; }
+nav.tabs a:hover { background: var(--surface-2); color: var(--fg); }
+nav.tabs a[aria-current="page"] { background: var(--surface-2); color: var(--fg); }
+nav.tabs a.officer { color: var(--accent); }
+.who { margin-left: auto; }
+.home-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap;
+  background: var(--surface-2); color: var(--fg); border: 1px solid var(--line); }
+.home-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+dialog.sheet { border: 1px solid var(--line); border-radius: 16px; padding: 0; width: min(440px, calc(100vw - 24px)); background: var(--surface); color: var(--fg); }
+dialog.sheet::backdrop { background: rgba(10, 8, 20, 0.55); }
+dialog.sheet .in { padding: 18px 18px 16px; display: grid; gap: 12px; }
+dialog.sheet h2 { font-family: var(--display); font-weight: 400; font-size: 20px; }
+dialog.sheet ol { margin: 0; padding-left: 20px; display: grid; gap: 8px; color: var(--muted); }
+dialog.sheet ol b { color: var(--fg); }
+dialog.sheet .glyph { display: inline-block; vertical-align: -3px; width: 16px; height: 16px; fill: none; stroke: var(--fg); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+main { padding-block: 20px 48px; display: grid; gap: 20px; }
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+h1 { font-family: var(--display); font-weight: 400; font-size: 24px; letter-spacing: 0.3px; }
+h2 { font-size: 14px; font-weight: 700; }
+.sub { color: var(--muted); font-size: 13px; }
+.faint { color: var(--faint); }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.grid { display: grid; gap: 14px; }
+.g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.g3 { grid-template-columns: 2fr 1fr; }
+@media (max-width: 820px) { .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .g2, .g3 { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); min-width: 0; }
+.panel > .head { padding: 14px 16px 6px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+.panel > .body { padding: 6px 16px 16px; }
+.tile { padding: 12px 16px; }
+.tile .label { font-size: 11px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: var(--muted); }
+.tile .value { font-family: var(--display); font-size: 26px; letter-spacing: 0.3px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.tile .hint { font-size: 12px; color: var(--faint); }
+.scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th { text-align: left; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); padding: 8px 10px; background: var(--surface-2); white-space: nowrap; }
+td { padding: 7px 10px; border-top: 1px solid var(--line); white-space: nowrap; }
+th.n, td.n { text-align: right; }
+th.sort { cursor: pointer; user-select: none; }
+tbody tr:hover td { background: color-mix(in srgb, var(--surface-2) 60%, transparent); }
+tr.dim td { opacity: 0.55; }
+a.name { color: var(--fg); font-weight: 600; text-decoration: none; }
+a.name:hover { text-decoration: underline; }
+.up { color: var(--good); } .down { color: var(--bad); } .bad { color: var(--bad); }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--surface-2); color: var(--muted); }
+.pill.bad { background: color-mix(in srgb, var(--bad) 14%, transparent); color: var(--bad); }
+.pill.gold { background: color-mix(in srgb, var(--gold) 16%, transparent); color: var(--gold); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); border-radius: 8px; padding: 3px 8px; }
+.medal { font-family: var(--display); color: var(--gold); }
+.bar-track { height: 6px; border-radius: 3px; background: var(--surface-2); width: 140px; }
+.bar-fill { height: 6px; border-radius: 3px; background: var(--series); }
+button, .btn { font: inherit; font-weight: 700; border-radius: 8px; padding: 7px 14px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; }
+button:hover { background: var(--surface-2); }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+button.primary:hover { filter: brightness(1.08); }
+button.link { border: 0; background: none; padding: 0 4px; color: var(--faint); font-weight: 600; }
+button.link:hover { color: var(--bad); background: none; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+input, select { font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; }
+input.badval { border-color: var(--bad); }
+select.fuzzy { border-color: var(--warn-fg); background: var(--warn-bg); color: var(--warn-fg); }
+.drop { border: 2px dashed var(--line); border-radius: var(--radius); padding: 28px 16px; text-align: center; cursor: pointer; }
+.drop:hover, .drop.over { border-color: var(--accent); background: var(--surface-2); }
+.drop b { display: block; font-size: 15px; margin-bottom: 4px; }
+.frames { display: flex; flex-wrap: wrap; gap: 8px; }
+.frame { width: 76px; position: relative; font-size: 11px; line-height: 1.25; }
+.frame img { width: 76px; height: 120px; object-fit: cover; object-position: top; border-radius: 6px; border: 1px solid var(--line); display: block; }
+.frame.skip img { opacity: 0.35; }
+.frame .x { position: absolute; top: 3px; right: 3px; padding: 0 6px; font-size: 11px; border-radius: 99px; background: rgba(0,0,0,.6); color: #fff; border: 0; }
+.note { border-radius: 8px; padding: 10px 12px; background: var(--warn-bg); color: var(--warn-fg); }
+.empty { padding: 36px 20px; text-align: center; color: var(--muted); }
+.empty h2 { font-family: var(--display); font-weight: 400; font-size: 22px; color: var(--fg); margin-bottom: 6px; }
+.steps { text-align: left; max-width: 520px; margin: 14px auto 0; padding-left: 20px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; padding: 2px; background: var(--surface); }
+.seg button { border: 0; padding: 4px 10px; font-weight: 600; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--surface-2); color: var(--fg); }
+.chart { width: 100%; height: 220px; display: block; overflow: visible; }
+.chart text { fill: var(--faint); font-size: 11px; font-family: var(--body); }
+.chart .gridline { stroke: var(--grid); }
+.chart-tip { font-size: 12px; color: var(--muted); min-height: 18px; }
+.sticky-col { position: sticky; left: 0; background: var(--surface); }
+footer.foot { border-top: 1px solid var(--line); padding-block: 22px 32px; font-size: 13px; color: var(--faint); display: grid; gap: 14px; justify-items: center; text-align: center; }
+footer.foot nav { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 4px; }
+footer.foot nav a { color: var(--muted); text-decoration: none; padding: 2px 6px; display: inline-flex; align-items: center; gap: 5px; }
+footer.foot nav a:hover { color: var(--fg); }
+footer.foot nav svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+footer.foot .sep { color: var(--line); }
+footer.foot .disclaimer { max-width: 900px; font-size: 12px; line-height: 1.55; margin: 0; }
+.doc { max-width: 760px; }
+.doc h1 { margin-bottom: 4px; }
+.doc h2 { font-size: 15px; margin: 20px 0 6px; }
+.doc p, .doc li { color: var(--muted); }
+.doc a { color: var(--accent); }
+footer.foot a.donate { display: inline-block; padding: 8px 18px; border-radius: 999px; background: #ffd23f; color: #3a2400; box-shadow: 0 2px 0 #c98f00; font-size: 14px; font-weight: 700; text-decoration: none; }
+footer.foot a.donate:hover { filter: brightness(1.08); }
+.guide summary { cursor: pointer; font-weight: 700; padding: 14px 16px; list-style: none; display: flex; align-items: center; gap: 8px; }
+.guide summary::-webkit-details-marker { display: none; }
+.guide summary::before { content: "▸"; color: var(--faint); transition: transform 0.15s; }
+.guide[open] summary::before { transform: rotate(90deg); }
+.guide .steps-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; padding: 0 16px 6px; }
+@media (max-width: 720px) { .guide .steps-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.guide figure { margin: 0; display: grid; gap: 6px; justify-items: center; text-align: center; }
+.guide figure svg { width: 100%; max-width: 132px; height: auto; display: block; }
+.guide figcaption { font-size: 12px; color: var(--muted); line-height: 1.35; }
+.guide figcaption b { display: block; color: var(--fg); font-size: 13px; }
+.guide .tips { margin: 6px 16px 16px; padding-left: 18px; color: var(--muted); font-size: 13px; }
+.reset-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 10px 14px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface); }
+.reset-bar .clock { font-family: var(--display); font-size: 18px; letter-spacing: 0.3px; }
+.reset-bar.ok { border-color: color-mix(in srgb, var(--good) 45%, transparent); background: color-mix(in srgb, var(--good) 10%, var(--surface)); }
+.reset-bar.warn { border-color: color-mix(in srgb, var(--gold) 50%, transparent); background: color-mix(in srgb, var(--gold) 10%, var(--surface)); }
+.reset-bar.late { border-color: color-mix(in srgb, var(--bad) 55%, transparent); background: color-mix(in srgb, var(--bad) 10%, var(--surface)); }
+.reset-bar .chk { font-weight: 700; }
+.reset-bar .chk.yes { color: var(--good); } .reset-bar .chk.no { color: var(--bad); }
+.reset-bar .last { margin-left: auto; color: var(--muted); font-size: 13px; }
+.howto { margin: 6px 0 0; padding-left: 20px; display: grid; gap: 6px; }
+.howto li { color: var(--muted); } .howto b { color: var(--fg); }
+nav.tabs svg { display: none; }
+.m-only { display: none; }
+.mcards { display: grid; gap: 8px; }
+.mcard { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 12px 14px; text-decoration: none; color: inherit; }
+.mcard.dim { opacity: 0.55; }
+.mcard .nm { font-weight: 700; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mcard .pw { font-family: var(--display); font-size: 18px; text-align: right; font-variant-numeric: tabular-nums; }
+.mcard .meta { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--muted); margin-top: 4px; }
+.mcard .meta b { color: var(--fg); font-weight: 700; }
+/* Phones: app-style bottom tab bar, bigger touch targets, 16px inputs (no iOS zoom), stacked review tables. */
+@media (max-width: 640px) {
+  .m-only { display: initial; }
+  .d-only { display: none !important; }
+  body { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+  header.bar .wrap { flex-wrap: nowrap; padding-block: 8px; }
+  .brand img { width: 34px; height: 34px; border-radius: 9px; }
+  .brand .title { font-size: 19px; }
+  .brand .tag { letter-spacing: 1px; }
+  .home-btn { padding: 6px 10px; min-height: 36px; }
+  nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; display: flex; flex-wrap: nowrap; gap: 0;
+    background: var(--surface); border-top: 1px solid var(--line); padding: 4px max(4px, env(safe-area-inset-left, 0px)) calc(4px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.12); }
+  nav.tabs a { flex: 1 1 0; min-width: 0; display: grid; justify-items: center; gap: 2px; padding: 6px 2px; font-size: 11px; border-radius: 10px; text-align: center; }
+  nav.tabs a span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  nav.tabs svg { display: block; width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  nav.tabs a[aria-current="page"] { background: transparent; color: var(--accent); }
+  nav.tabs a.officer { color: var(--muted); }
+  nav.tabs a.officer[aria-current="page"] { color: var(--accent); }
+  .who { font-size: 11px; white-space: nowrap; }
+  main { padding-block: 14px 24px; gap: 14px; }
+  h1 { font-size: 22px; }
+  .tile { padding: 10px 12px; } .tile .value { font-size: 22px; }
+  .panel > .head { padding: 12px 12px 4px; } .panel > .body { padding: 4px 12px 12px; }
+  button, .btn { min-height: 44px; padding: 10px 16px; }
+  button.link { min-height: 36px; padding: 0 8px; }
+  .seg button { min-height: 38px; }
+  input, select { font-size: 16px; min-height: 44px; padding: 8px 10px; }
+  input[type="checkbox"] { min-height: 0; width: 20px; height: 20px; }
+  td, th { padding: 8px 8px; }
+  .reset-bar .last { margin-left: 0; flex-basis: 100%; }
+  #member-search, #member-sort { flex: 1 1 140px; min-width: 0; }
+  .inv-table th:nth-child(4), .inv-table td:nth-child(4), .inv-table th:nth-child(6), .inv-table td:nth-child(6) { display: none; }
+  .drop { padding: 22px 14px; }
+  .chart { height: auto; }
+  footer.foot { padding-bottom: 20px; }
+  /* Review tables become one card per row; each cell is labelled from its column header. */
+  table.stack thead { display: none; }
+  table.stack, table.stack tbody, table.stack tfoot { display: block; }
+  table.stack tr { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; padding: 12px; border-top: 1px solid var(--line); position: relative; }
+  table.stack tfoot tr { display: block; }
+  table.stack td { display: grid; gap: 3px; padding: 0; border: 0; white-space: normal; }
+  table.stack td::before { content: attr(data-label); font-size: 11px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; color: var(--muted); }
+  table.stack td:has(> input:only-child[value=""]), table.stack td.wide { grid-column: 1 / -1; }
+  table.stack td input, table.stack td select { width: 100% !important; }
+  table.stack td.rm { position: absolute; top: 6px; right: 6px; } table.stack td.rm::before { content: none; }
+  table.stack tr td:first-child { padding-right: 40px; }
+}
+tr.flagged td { background: color-mix(in srgb, var(--bad) 9%, transparent); }
+td.check { white-space: normal; min-width: 180px; font-size: 12px; }
+td.check .bad { display: block; margin-bottom: 4px; }
+button.alt { font-size: 12px; padding: 2px 8px; margin: 2px 4px 2px 0; border-radius: 999px; min-height: 0; }
+button.alt.ok { color: var(--good); }
+.progress { height: 10px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.progress .fill { height: 100%; border-radius: 999px; background: var(--accent); transition: width 0.3s; }
+.progress .fill.bad { background: var(--bad); }
+.drop.locked { pointer-events: none; opacity: 0.5; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<header class="bar">
+  <div class="wrap">
+    <div class="brand" id="brand">
+      <a href="#overview" aria-label="Guild Ledger home"><img src="icon-192.png" alt="" width="40" height="40"></a>
+      <span class="words"><a class="title" href="#overview">Guild Ledger</a><span class="tag"><b>Archero 2</b><button class="guild-chip" id="guild-chip" type="button" aria-label="Switch guild"><span id="brand-sub">Guild tracker</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button></span></span>
+    </div>
+    <nav class="tabs" id="tabs" aria-label="Sections">
+      <a href="#overview" data-view="overview"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Overview</span></a>
+      <a href="#members" data-view="members"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/></svg><span>Members</span></a>
+      <a href="#invasion" data-view="invasion"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 3.5L20.5 3.5 20.5 9.5 9 21 3 15z"/><path d="M6 12l6 6M3 21l3-3"/></svg><span><span class="d-only">Monster </span>Invasion</span></a>
+      <a href="#upload" data-view="upload" class="officer" id="tab-upload" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4M7 9l5-5 5 5"/><path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></svg><span>Upload</span></a>
+      <a href="#settings" data-view="settings"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Settings</span></a>
+    </nav>
+    <div class="who"><button class="home-btn" id="home-btn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M12 8v6M9 11h6"/></svg><span>Add to Home<span class="d-only"> Screen</span></span></button></div>
+  </div>
+</header>
+<main class="wrap" id="app">
+  <div class="panel empty" id="boot">
+    <h2>Loading guild data…</h2>
+    <p>Connecting to the guild's records.</p>
+  </div>
+</main>
+<footer class="wrap foot">
+  <!-- Placeholder until DONATE_URL is set. -->
+  <a id="donate" class="donate" href="#" target="_blank" rel="noopener noreferrer">Donate me a cup of coffee ♥</a>
+  <nav aria-label="Site">
+    <a href="#about">About</a><span class="sep" aria-hidden="true">·</span>
+    <a href="#privacy">Privacy Policy</a><span class="sep" aria-hidden="true">·</span>
+    <a href="#copyright">Copyright/DMCA</a><span class="sep" aria-hidden="true">·</span>
+    <a href="#terms">Terms of Service</a><span class="sep" aria-hidden="true">·</span>
+    <a href="#contact">Contact</a>
+  </nav>
+  <p class="disclaimer">Archero 2 is a trademark of Habby Pte. Ltd. Game data, names, images, and assets are © Habby Pte. Ltd. Guild Ledger is an unofficial fan-run community tool and is not affiliated with, endorsed, or sponsored by Habby.</p>
+</footer>
+
+<script>
+/* Guild Ledger. Copyright (c) 2026 the Guild Ledger author. All rights reserved. Not licensed for copying, modification or reuse. */
+"use strict";
+/* ============================== helpers ============================== */
+const $ = (s, r = document) => r.querySelector(s);
+function el(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  if (attrs) for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k === "class") e.className = v;
+    else if (k === "style") e.style.cssText = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else if (k === "value") e.value = v;
+    else e.setAttribute(k, v === true ? "" : v);
+  }
+  for (const k of kids.flat(Infinity)) if (k != null && k !== false) e.append(k instanceof Node ? k : String(k));
+  return e;
+}
+const SVGNS = "http://www.w3.org/2000/svg";
+const isPhone = () => matchMedia("(max-width: 640px)").matches;
+const noHover = () => matchMedia("(hover: none)").matches;
+/** Labels each cell with its column header so the table can stack into cards on phones. */
+function stackTable(table) {
+  const heads = [...table.querySelectorAll("thead th")].map((th) => th.textContent.trim());
+  table.classList.add("stack");
+  for (const tr of table.querySelectorAll("tbody tr")) [...tr.children].forEach((td, i) => {
+    if (td.querySelector("button.link")) td.classList.add("rm");
+    else td.dataset.label = heads[i] ?? "";
+  });
+  return table;
+}
+function svg(tag, attrs, ...kids) {
+  const e = document.createElementNS(SVGNS, tag);
+  for (const [k, v] of Object.entries(attrs || {})) e.setAttribute(k, v);
+  for (const k of kids.flat()) if (k != null) e.append(k instanceof Node ? k : String(k));
+  return e;
+}
+
+const SUFFIX = { k: 1e3, m: 1e6, b: 1e9, t: 1e12, "万": 1e4, "亿": 1e8 };
+function parseNum(v) {
+  if (v == null) return null;
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
+  const s = String(v).trim().replace(/[,\s]/g, "").toLowerCase();
+  const m = s.match(/^(-?\d+(?:\.\d+)?)([kmbt万亿]?)$/);
+  return m ? Math.round(parseFloat(m[1]) * (m[2] ? SUFFIX[m[2]] : 1)) : null;
+}
+function parseIntish(v) {
+  if (v == null) return null;
+  const n = parseInt(String(v).replace(/[^\d-]/g, ""), 10);
+  return Number.isFinite(n) ? n : null;
+}
+const compactFmt = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 2 });
+const fullFmt = new Intl.NumberFormat("en");
+const fmt = (n) => n == null ? "—" : Math.abs(n) >= 10000 ? compactFmt.format(n) : fullFmt.format(n);
+/** Each guild's records live under guilds/<guild ID>/…; which guild a viewer sees is remembered on their device. */
+const gcol = (name) => S.db.collection(`guilds/${S.guildId}/${name}`);
+const GUILD_KEY = "guild-ledger:guild";
+const myGuild = () => { try { return localStorage.getItem(GUILD_KEY); } catch { return null; } };
+const rememberGuild = (id) => { try { localStorage.setItem(GUILD_KEY, id); } catch { /* per-device convenience only */ } };
+const nameKey = (n) => String(n).normalize("NFKC").toLowerCase().replace(/\s+/g, "");
+function levenshtein(a, b) {
+  if (a === b) return 0;
+  const prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let diag = prev[0]; prev[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const tmp = prev[j];
+      prev[j] = Math.min(prev[j] + 1, prev[j - 1] + 1, diag + (a[i - 1] === b[j - 1] ? 0 : 1));
+      diag = tmp;
+    }
+  }
+  return prev[b.length];
+}
+const dayNum = (d) => { const [y, m, dd] = d.split("-").map(Number); return Date.UTC(y, m - 1, dd) / 864e5; };
+const shortDay = (d) => { const [, m, dd] = d.split("-"); return `${Number(m)}/${Number(dd)}`; };
+function todayLocal() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function delta(v, pct) {
+  if (v == null) return el("span", { class: "faint" }, "—");
+  const cls = v > 0 ? "up" : v < 0 ? "down" : "faint";
+  return el("span", { class: cls }, (v > 0 ? "▲ " : v < 0 ? "▼ " : "") + fmt(Math.abs(v)), pct ? el("span", { class: "faint", style: "margin-left:4px;font-size:12px" }, pct) : null);
+}
+
+/* ============================== site config ============================== */
+// Set to your Ko-fi / Buy Me a Coffee page; until then the donate button is a placeholder.
+const DONATE_URL = "";
+// The website build (GitHub Pages) sets window.GL_SITE and supplies storage and Claude itself (runtime.js):
+// records stay in each browser and officers read with their own Anthropic API key.
+const SITE = !!window.GL_SITE;
+// The only way to reach the author.
+const DISCORD = "vinn0127";
+
+/* ============================== state ============================== */
+const S = {
+  db: null, user: null, sample: null,
+  canWrite: false, membersById: new Map(), days: new Map(),
+  loaded: { members: false, days: false }, offlineNote: false,
+  view: "overview", memberId: null,
+  invDay: null, invView: "day",
+  sort: { key: "power", dir: -1 }, showFormer: false, search: "",
+  upload: null, // see uploadState()
+  config: {}, // guilds/<id>/config/guild: { resetUtc: "HH:MM" }, the server's daily reset, shared by the guild
+  guildId: null, guilds: new Map(), // guilds/<id>: { name, updatedAt }
+};
+
+/* ============================== derived data ============================== */
+function model() {
+  const days = [...S.days.keys()].sort();
+  const rosterDays = days.filter((d) => S.days.get(d).roster?.rows?.length);
+  const invDays = days.filter((d) => S.days.get(d).invasion?.rows?.length);
+  const latestRoster = rosterDays.at(-1) ?? null;
+  const latestInv = invDays.at(-1) ?? null;
+  const rosterByMember = new Map(); // id -> [{day, ...row}] ascending
+  for (const d of rosterDays) for (const r of S.days.get(d).roster.rows) {
+    if (!rosterByMember.has(r.m)) rosterByMember.set(r.m, []);
+    rosterByMember.get(r.m).push({ day: d, ...r });
+  }
+  const invByMember = new Map();
+  for (const d of invDays) {
+    const rows = S.days.get(d).invasion.rows;
+    for (const r of rows) {
+      if (!invByMember.has(r.m)) invByMember.set(r.m, []);
+      invByMember.get(r.m).push({ day: d, participants: rows.length, ...r });
+    }
+  }
+  const latestSet = new Set(latestRoster ? S.days.get(latestRoster).roster.rows.map((r) => r.m) : []);
+  const window7 = latestInv ? invDays.filter((d) => dayNum(d) > dayNum(latestInv) - 7) : [];
+  const members = [...S.membersById.values()].map((m) => {
+    const hist = rosterByMember.get(m.id) ?? [];
+    const cur = hist.at(-1) ?? null;
+    const before = (n) => cur ? [...hist].reverse().find((h) => h.power != null && dayNum(h.day) <= dayNum(cur.day) - n)?.power ?? null : null;
+    const inv = (invByMember.get(m.id) ?? []).filter((i) => window7.includes(i.day));
+    const dmg = inv.map((i) => i.dmg).filter((x) => x != null);
+    return {
+      id: m.id, name: m.name, role: cur?.role ?? null, power: cur?.power ?? null, con: cur?.con ?? null,
+      att: cur?.att ?? null, lastSeen: cur?.day ?? null, inLatest: latestSet.has(m.id),
+      p7: before(7), p30: before(30), invDays: inv.length, invAvg: dmg.length ? dmg.reduce((a, b) => a + b, 0) / dmg.length : null,
+    };
+  });
+  return { days, rosterDays, invDays, latestRoster, latestInv, rosterByMember, invByMember, members, window7 };
+}
+function invasionDay(M, day) {
+  const i = M.invDays.indexOf(day);
+  const prevDay = i > 0 ? M.invDays[i - 1] : null;
+  const prevRows = new Map((prevDay ? S.days.get(prevDay).invasion.rows : []).map((r) => [r.m, r]));
+  const rows = [...S.days.get(day).invasion.rows]
+    .sort((a, b) => (b.dmg ?? -1) - (a.dmg ?? -1) || (a.rank ?? 999) - (b.rank ?? 999))
+    .map((r) => ({ ...r, prev: prevRows.get(r.m) ?? null }));
+  const rosterDay = [...M.rosterDays].reverse().find((d) => d <= day);
+  const have = new Set(rows.map((r) => r.m));
+  const missing = rosterDay ? S.days.get(rosterDay).roster.rows.filter((r) => !have.has(r.m)).map((r) => r.m) : [];
+  return { rows, prevDay, missing };
+}
+const memberName = (id) => S.membersById.get(id)?.name ?? "Unknown";
+
+/* ============================== charts ============================== */
+function chart(points, { kind = "line", label }) {
+  const box = el("div");
+  const tip = el("div", { class: "chart-tip" }, points.length ? (noHover() ? "Tap a point for its value." : "Hover a point for its value.") : "");
+  if (!points.length) { box.append(el("p", { class: "sub", style: "padding:40px 0;text-align:center" }, "No data yet.")); return box; }
+  const phone = isPhone(), W = phone ? 340 : 520, H = phone ? 200 : 220, L = phone ? 46 : 56, R = 10, T = 10, B = 24;
+  const vals = points.map((p) => p.v).filter((v) => v != null);
+  let lo = kind === "bar" ? 0 : Math.min(...vals), hi = Math.max(...vals);
+  if (lo === hi) { lo = lo === 0 ? 0 : lo * 0.95; hi = hi === 0 ? 1 : hi * 1.05; }
+  const pad = (hi - lo) * 0.08; if (kind !== "bar") lo -= pad; hi += pad;
+  const x = (i) => points.length === 1 ? L + (W - L - R) / 2 : L + (i * (W - L - R)) / (points.length - 1);
+  const bw = Math.max(3, Math.min(26, ((W - L - R) / points.length) * 0.7));
+  const xb = (i) => L + ((i + 0.5) * (W - L - R)) / points.length;
+  const y = (v) => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+  const s = svg("svg", { viewBox: `0 0 ${W} ${H}`, class: "chart", role: "img", "aria-label": label });
+  for (let k = 0; k <= 4; k++) {
+    const v = lo + ((hi - lo) * k) / 4;
+    s.append(svg("line", { x1: L, x2: W - R, y1: y(v), y2: y(v), class: "gridline" }));
+    s.append(svg("text", { x: L - 6, y: y(v) + 4, "text-anchor": "end" }, compactFmt.format(v)));
+  }
+  const step = Math.ceil(points.length / 7);
+  points.forEach((p, i) => { if (i % step === 0 || i === points.length - 1) s.append(svg("text", { x: kind === "bar" ? xb(i) : x(i), y: H - 6, "text-anchor": "middle" }, shortDay(p.day))); });
+  const show = (p) => { tip.textContent = `${p.day}: ${p.v == null ? "—" : fullFmt.format(p.v)} ${label.toLowerCase()}`; };
+  if (kind === "line") {
+    const pts = points.map((p, i) => p.v == null ? null : [x(i), y(p.v)]).filter(Boolean);
+    s.append(svg("polyline", { points: pts.map((q) => q.join(",")).join(" "), fill: "none", stroke: "var(--series)", "stroke-width": 2, "stroke-linejoin": "round" }));
+    points.forEach((p, i) => {
+      if (p.v == null) return;
+      const c = svg("circle", { cx: x(i), cy: y(p.v), r: points.length > 40 ? 2 : 3.5, fill: "var(--series)", stroke: "var(--surface)", "stroke-width": 2 });
+      const hit = svg("circle", { cx: x(i), cy: y(p.v), r: 10, fill: "transparent" }, svg("title", {}, `${p.day}: ${fullFmt.format(p.v)}`));
+      hit.addEventListener("mouseenter", () => { show(p); c.setAttribute("r", 5); });
+      hit.addEventListener("click", () => show(p));
+      hit.addEventListener("mouseleave", () => c.setAttribute("r", points.length > 40 ? 2 : 3.5));
+      s.append(c, hit);
+    });
+  } else {
+    points.forEach((p, i) => {
+      if (p.v == null) return;
+      const top = y(p.v), base = y(0);
+      const r = svg("rect", { x: xb(i) - bw / 2, y: top, width: bw, height: Math.max(1, base - top), rx: 3, fill: "var(--series)" }, svg("title", {}, `${p.day}: ${fullFmt.format(p.v)}`));
+      r.addEventListener("mouseenter", () => { show(p); r.setAttribute("opacity", 0.8); });
+      r.addEventListener("click", () => show(p));
+      r.addEventListener("mouseleave", () => r.setAttribute("opacity", 1));
+      s.append(r);
+    });
+  }
+  box.append(s, tip);
+  return box;
+}
+
+/* ============================== views ============================== */
+function tile(label, value, hint) {
+  return el("div", { class: "panel tile" }, el("div", { class: "label" }, label), el("div", { class: "value" }, value), hint ? el("div", { class: "hint" }, hint) : null);
+}
+function panel(title, extra, ...body) {
+  return el("section", { class: "panel" }, el("div", { class: "head" }, el("h2", {}, title), extra), el("div", { class: "body" }, ...body));
+}
+const memberLink = (id, name) => el("a", { class: "name", href: `#m-${id}` }, name ?? memberName(id));
+
+function emptyState() {
+  if (SITE) return el("div", { class: "panel empty" },
+    el("h2", {}, "Track your Archero 2 guild"),
+    el("p", {}, "Daily member power, contribution, Monster Invasion attempts and damage rankings, read from one short screen recording."),
+    el("ol", { class: "steps" },
+      el("li", {}, hasApiKey() ? el("span", {}, "✓ API key added.") : el("span", {}, "Add your Anthropic API key in ", el("a", { href: "#settings" }, "Settings"), " (once, about 2 minutes).")),
+      el("li", {}, "In Archero 2, screen-record Guild Members scrolled to the bottom, then Monster Invasion → Guild Member Ranking scrolled to the bottom."),
+      el("li", {}, "Drop the recording into ", el("a", { href: "#upload" }, "Upload"), ". Claude reads it, you check the table, and it's saved in this browser.")),
+    el("p", { style: "margin-top:16px" }, el("button", { onclick: loadDemo }, "Explore an example guild first")));
+  return el("div", { class: "panel empty" },
+    el("h2", {}, "No guild records yet"),
+    el("p", {}, "This page tracks member power, contribution, daily Monster Invasion attempts and damage, day by day."),
+    S.canWrite
+      ? el("ol", { class: "steps" },
+          el("li", {}, "In Archero 2, start a screen recording."),
+          el("li", {}, "Open Guild Members and scroll slowly to the bottom."),
+          el("li", {}, "Open Monster Invasion → Guild Member Ranking and scroll to the bottom."),
+          el("li", {}, "Open the ", el("a", { href: "#upload" }, "Upload"), " tab here and drop the recording. ", SITE ? "Claude reads it with your Anthropic API key (add it in Settings once)." : "Claude reads it with your own Claude account."))
+      : el("p", { class: "sub" }, "A guild officer adds each day's records. Check back after the first upload."));
+}
+
+/* ============================== example guild (website) ============================== */
+// Made-up players, so new visitors can see what two weeks of records look like before adding a key.
+const DEMO_ID = "demo";
+const DEMO_NAMES = ["Nova", "Kestrel", "Pip", "Ashfall", "Moonbrook", "Rook", "Tamsin", "Bramble", "Quill", "Ember", "Sable", "Wren", "Jolt", "Fable", "Corvo", "Mist", "Talon", "Saffron", "Bolt", "Juniper", "Onyx", "Vesper", "Clover", "Drift", "Holly", "Rune", "Skye", "Thorne", "Zephyr", "Marlow"];
+async function loadDemo() {
+  const roles = (i) => i === 0 ? "Leader" : i < 3 ? "Vice Leader" : i < 8 ? "Elder" : "Guild Members";
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  await S.db.collection("guilds").doc(DEMO_ID).set({ name: "firenation", updatedAt: "2000-01-01T00:00:00.000Z" });
+  const ids = DEMO_NAMES.map((n) => `demo-${n.toLowerCase()}`);
+  for (const [i, n] of DEMO_NAMES.entries()) await S.db.collection(`guilds/${DEMO_ID}/members`).doc(ids[i]).set({ name: n, keys: [nameKey(n)] });
+  const base = DEMO_NAMES.map((_, i) => 5.2e6 - i * 1.3e5 + rnd() * 2e5), skill = DEMO_NAMES.map(() => 0.6 + rnd() * 0.8);
+  for (let k = 13; k >= 0; k--) {
+    const d = new Date(); d.setDate(d.getDate() - k);
+    const day = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`, t = 13 - k;
+    const rows = DEMO_NAMES.map((_, i) => ({ m: ids[i], role: roles(i), power: Math.round(base[i] * (1 + t * (0.004 + skill[i] * 0.004))), att: rnd() < 0.82 ? 2 : rnd() < 0.5 ? 1 : 0, con: Math.round(1800 + rnd() * 1500) }));
+    const dmg = rows.filter((r) => r.att > 0).map((r, j) => ({ m: r.m, dmg: Math.round(r.power * skill[ids.indexOf(r.m)] * (20000 + rnd() * 9000) * (r.att / 2)) })).sort((a, b) => b.dmg - a.dmg).map((r, j) => ({ ...r, rank: j + 1 }));
+    const power = rows.reduce((a, r) => a + r.power, 0);
+    await gcolFor(DEMO_ID, "days").doc(day).set({ roster: { rows, savedAt: d.toISOString(), guild: { name: "firenation", level: 6, members: rows.length, maxMembers: 40, power, exp: 210000 + t * 9000, expMax: 600000 } }, invasion: { rows: dmg, savedAt: d.toISOString() } });
+  }
+  rememberGuild(DEMO_ID); await openGuild(DEMO_ID); location.hash = "#overview"; render();
+}
+const gcolFor = (gid, name) => S.db.collection(`guilds/${gid}/${name}`);
+async function removeDemo() {
+  for (const id of S.membersById.keys()) await gcolFor(DEMO_ID, "members").doc(id).delete();
+  for (const day of S.days.keys()) await gcolFor(DEMO_ID, "days").doc(day).delete();
+  await S.db.collection("guilds").doc(DEMO_ID).delete();
+  const other = [...S.guilds.keys()].find((g) => g !== DEMO_ID) ?? null;
+  if (other) rememberGuild(other); else { try { localStorage.removeItem(GUILD_KEY); } catch { /* fine */ } }
+  await openGuild(other); location.hash = "#overview";
+}
+const demoBanner = () => S.guildId === DEMO_ID ? el("div", { class: "note row", style: "justify-content:space-between" },
+  el("span", {}, el("b", {}, "Example guild. "), "Shown with our guild's name, firenation, but the players and numbers are made up. Your own guild appears after your first upload."),
+  el("button", { onclick: removeDemo }, "Remove example")) : "";
+
+function viewOverview(M) {
+  if (!M.days.length) return emptyState();
+  const lr = M.latestRoster ? S.days.get(M.latestRoster).roster : null;
+  const g = lr?.guild ?? null;
+  const inv = M.latestInv ? invasionDay(M, M.latestInv) : null;
+  const totalDmg = inv ? inv.rows.reduce((s, r) => s + (r.dmg ?? 0), 0) : null;
+  const powerOf = (d) => S.days.get(d).roster.guild?.power ?? S.days.get(d).roster.rows.reduce((s, r) => s + (r.power ?? 0), 0);
+  const gainers = M.members.filter((m) => m.inLatest && m.power != null && m.p7 != null).map((m) => ({ ...m, gain: m.power - m.p7 })).sort((a, b) => b.gain - a.gain).slice(0, 6);
+  const unused = M.members.filter((m) => m.inLatest && m.att != null && m.att < 2).sort((a, b) => a.att - b.att);
+
+  return el("div", { class: "grid" },
+    el("div", { class: "grid g4" },
+      tile("Members", g?.members != null ? `${g.members}/${g.maxMembers ?? "—"}` : lr ? lr.rows.length : "—", M.latestRoster ? `Lv ${g?.level ?? "—"} · as of ${M.latestRoster}` : "No member list yet"),
+      tile("Guild power", fmt(lr ? powerOf(M.latestRoster) : null), g?.exp != null && g.expMax ? `EXP ${fmt(g.exp)} / ${fmt(g.expMax)}` : "From the latest member list"),
+      tile("Invasion damage", fmt(totalDmg), M.latestInv ? `${inv.rows.length} members on ${M.latestInv}` : "No ranking yet"),
+      tile("Attempts unused", lr ? unused.length : "—", lr ? `of ${lr.rows.length} members, 2 attempts each per day` : "")),
+    el("div", { class: "grid g2" },
+      panel("Guild power", null, chart(M.rosterDays.map((d) => ({ day: d, v: powerOf(d) })), { kind: "line", label: "Guild power" })),
+      panel("Monster Invasion damage per day", null, chart(M.invDays.slice(-30).map((d) => ({ day: d, v: S.days.get(d).invasion.rows.reduce((s, r) => s + (r.dmg ?? 0), 0) })), { kind: "bar", label: "Damage" }))),
+    unused.length ? panel(`Invasion attempts not used · ${unused.length}`, el("span", { class: "sub" }, `on ${M.latestRoster}`),
+      el("div", { class: "chips" }, unused.map((m) => el("span", { class: "chip" }, memberLink(m.id, m.name), " ", el("span", { class: "pill bad" }, `${m.att}/2`))))) : null,
+    el("div", { class: "grid g3" },
+      panel("Top damage", el("a", { href: "#invasion", class: "sub" }, M.latestInv ? `${M.latestInv} · full ranking →` : ""),
+        inv ? el("div", { class: "scroll" }, el("table", {}, el("tbody", {}, inv.rows.slice(0, 10).map((r, i) =>
+          el("tr", {}, el("td", { class: "medal", style: "width:36px" }, String(r.rank ?? i + 1)), el("td", {}, memberLink(r.m)), el("td", { class: "n" }, fmt(r.dmg)),
+            el("td", { class: "n" }, r.prev?.dmg != null && r.dmg != null ? delta(r.dmg - r.prev.dmg) : el("span", { class: "faint" }, "new"))))))) : el("p", { class: "sub" }, "No ranking uploaded yet.")),
+      panel("Biggest power gains · 7 days", null,
+        gainers.length ? el("table", {}, el("tbody", {}, gainers.map((m) => el("tr", {}, el("td", {}, memberLink(m.id, m.name)), el("td", { class: "n" }, delta(m.gain))))))
+          : el("p", { class: "sub" }, "Shows up once there are member lists at least 7 days apart."))));
+}
+
+const COLS = [
+  { key: "name", label: "Name", get: (m) => m.name.toLowerCase() },
+  { key: "role", label: "Role", get: (m) => m.role },
+  { key: "power", label: "Power", n: true, get: (m) => m.power },
+  { key: "g7", label: "Δ 7d", n: true, get: (m) => m.power != null && m.p7 != null ? m.power - m.p7 : null },
+  { key: "g30", label: "Δ 30d", n: true, get: (m) => m.power != null && m.p30 != null ? m.power - m.p30 : null },
+  { key: "con", label: "Contribution", n: true, get: (m) => m.con },
+  { key: "att", label: "Invasion today", n: true, get: (m) => m.att },
+  { key: "inv", label: "Invasion days", n: true, get: (m) => m.invDays },
+  { key: "avg", label: "Avg damage", n: true, get: (m) => m.invAvg },
+];
+function viewMembers(M) {
+  if (!M.members.length) return emptyState();
+  const col = COLS.find((c) => c.key === S.sort.key) ?? COLS[2];
+  const former = M.members.filter((m) => !m.inLatest && m.lastSeen);
+  const rows = M.members
+    .filter((m) => (S.showFormer || m.inLatest || !m.lastSeen) && m.name.toLowerCase().includes(S.search.toLowerCase()))
+    .sort((a, b) => {
+      const va = col.get(a), vb = col.get(b);
+      if (va == null && vb == null) return 0; if (va == null) return 1; if (vb == null) return -1;
+      return (va < vb ? -1 : va > vb ? 1 : 0) * S.sort.dir;
+    });
+  const wd = M.window7.length;
+  const sortPick = el("select", { id: "member-sort", "aria-label": "Sort by", onchange: (e) => { const c = COLS.find((x) => x.key === e.target.value); S.sort = { key: c.key, dir: c.n ? -1 : 1 }; render(); } },
+    COLS.map((c) => el("option", { value: c.key, selected: c.key === S.sort.key || null }, `Sort: ${c.label}`)));
+  const cards = () => el("div", { class: "mcards" }, rows.map((m) => {
+    const g7 = COLS[3].get(m);
+    return el("a", { class: `panel mcard ${m.inLatest || !m.lastSeen ? "" : "dim"}`, href: `#m-${m.id}` },
+      el("span", { class: "nm" }, m.name), el("span", { class: "pw" }, fmt(m.power)),
+      el("span", { class: "sub" }, m.role ?? ""), el("span", { style: "text-align:right;font-size:12px" }, delta(g7), el("span", { class: "faint" }, " 7d")),
+      el("span", { class: "meta" },
+        el("span", {}, "Invasion ", m.att == null ? "—" : el("span", { class: m.att < 2 ? "pill bad" : "pill" }, `${m.att}/2`)),
+        el("span", {}, "Contrib ", el("b", {}, fmt(m.con))),
+        el("span", {}, "Avg dmg ", el("b", {}, fmt(m.invAvg)))));
+  }));
+  const search = el("input", { id: "member-search", type: "search", placeholder: "Search name", value: S.search, oninput: (e) => { S.search = e.target.value; render(); queueMicrotask(() => { const i = $("#member-search"); i?.focus(); i?.setSelectionRange(i.value.length, i.value.length); }); } });
+  return el("div", { class: "grid" },
+    el("div", { class: "row" }, el("h1", {}, "Members"), el("span", { class: "sub" }, `Latest member list: ${M.latestRoster ?? "—"} · invasion columns cover the last ${wd} recorded day${wd === 1 ? "" : "s"}`)),
+    el("div", { class: "row" }, search, isPhone() ? sortPick : null,
+      former.length ? el("label", { class: "sub" }, el("input", { type: "checkbox", id: "show-former", checked: S.showFormer || null, onchange: (e) => { S.showFormer = e.target.checked; render(); } }), ` Show ${former.length} not on the latest list`) : null,
+      el("span", { class: "faint", style: "margin-left:auto" }, `${rows.length} shown`)),
+    isPhone() ? cards() : el("div", { class: "panel scroll" }, el("table", {},
+      el("thead", {}, el("tr", {}, COLS.map((c) => el("th", { class: `sort ${c.n ? "n" : ""}`, onclick: () => { S.sort = { key: c.key, dir: S.sort.key === c.key ? -S.sort.dir : c.n ? -1 : 1 }; render(); } }, c.label, S.sort.key === c.key ? (S.sort.dir === 1 ? " ↑" : " ↓") : "")))),
+      el("tbody", {}, rows.map((m) => {
+        const g7 = COLS[3].get(m), g30 = COLS[4].get(m);
+        return el("tr", { class: m.inLatest || !m.lastSeen ? "" : "dim" },
+          el("td", {}, memberLink(m.id, m.name)), el("td", { class: "sub" }, m.role ?? ""),
+          el("td", { class: "n" }, el("b", {}, fmt(m.power))),
+          el("td", { class: "n" }, delta(g7, g7 != null && m.p7 ? `${((g7 / m.p7) * 100).toFixed(1)}%` : null)), el("td", { class: "n" }, delta(g30)),
+          el("td", { class: "n" }, fmt(m.con)),
+          el("td", { class: "n" }, m.att == null ? "—" : el("span", { class: m.att < 2 ? "pill bad" : "pill" }, `${m.att}/2`)),
+          el("td", { class: "n" }, el("span", { class: wd && m.invDays < wd ? "bad" : "" }, String(m.invDays)), el("span", { class: "faint" }, `/${wd}`)),
+          el("td", { class: "n" }, fmt(m.invAvg)));
+      })))));
+}
+
+function viewMember(M, id) {
+  const m = S.membersById.get(id);
+  if (!m) return el("div", { class: "panel empty" }, el("h2", {}, "Member not found"), el("p", {}, el("a", { href: "#members" }, "Back to members")));
+  const roster = M.rosterByMember.get(id) ?? [];
+  const inv = M.invByMember.get(id) ?? [];
+  const latest = roster.at(-1);
+  const first = roster.find((r) => r.power != null);
+  const dmg = inv.map((i) => i.dmg).filter((v) => v != null);
+  const others = [...S.membersById.values()].filter((o) => o.id !== id).sort((a, b) => a.name.localeCompare(b.name));
+  return el("div", { class: "grid" },
+    el("div", {}, el("a", { href: "#members", class: "sub" }, "← Members"), el("h1", { style: "margin-top:4px" }, m.name),
+      el("div", { class: "sub" }, `${latest?.role ?? "—"} · as of ${latest?.day ?? "never"}`)),
+    el("div", { class: "grid g4" },
+      tile("Power", fmt(latest?.power), el("span", {}, `since ${first?.day ?? "—"}: `, delta(latest?.power != null && first?.power != null ? latest.power - first.power : null))),
+      tile("Contribution", fmt(latest?.con), latest ? `on ${latest.day}` : ""),
+      tile("Invasion days", String(inv.length), latest?.att != null ? `${latest.att}/2 attempts on ${latest.day}` : "days with a damage entry"),
+      tile("Avg damage", fmt(dmg.length ? dmg.reduce((a, b) => a + b, 0) / dmg.length : null), dmg.length ? `best ${fmt(Math.max(...dmg))}` : "")),
+    el("div", { class: "grid g2" },
+      panel("Power", null, chart(roster.map((r) => ({ day: r.day, v: r.power })), { label: "Power" })),
+      panel("Monster Invasion damage", null, chart(inv.map((r) => ({ day: r.day, v: r.dmg })), { kind: "bar", label: "Damage" })),
+      panel("Contribution", null, chart(roster.map((r) => ({ day: r.day, v: r.con })), { label: "Contribution" })),
+      panel("Daily record", null, el("div", { class: "scroll", style: "max-height:260px;overflow-y:auto" }, el("table", {},
+        el("thead", {}, el("tr", {}, el("th", {}, "Day"), el("th", { class: "n" }, "Attempts"), el("th", { class: "n" }, "Rank"), el("th", { class: "n" }, "Damage"))),
+        el("tbody", {}, [...new Set([...roster.map((r) => r.day), ...inv.map((r) => r.day)])].sort().reverse().map((d) => {
+          const r = roster.find((x) => x.day === d), i = inv.find((x) => x.day === d);
+          return el("tr", {}, el("td", {}, d), el("td", { class: "n" }, r?.att != null ? `${r.att}/2` : "—"),
+            el("td", { class: "n" }, i ? el("span", {}, String(i.rank ?? "—"), el("span", { class: "faint" }, `/${i.participants}`)) : "—"), el("td", { class: "n" }, fmt(i?.dmg)));
+        })))))),
+    m.keys?.length > 1 ? el("p", { class: "faint" }, `Also matched as: ${m.keys.slice(1).join(", ")}`) : null,
+    S.canWrite ? mergePanel(m, others) : null);
+}
+function mergePanel(m, others) {
+  const sel = el("select", { id: "merge-target" }, el("option", { value: "" }, "Choose member…"), others.map((o) => el("option", { value: o.id }, o.name)));
+  const status = el("span", { class: "sub" });
+  const confirmRow = el("div", { class: "row", hidden: true });
+  const go = el("button", { disabled: true, onclick: () => { confirmRow.hidden = false; confirmRow.replaceChildren(
+    el("span", {}, `Move all of ${m.name}'s history into ${memberName(sel.value)}? This can't be undone.`),
+    el("button", { class: "primary", onclick: async () => { status.textContent = "Merging…"; try { const t = sel.value; await mergeMembers(m.id, t); location.hash = `#m-${t}`; } catch (e) { status.textContent = `Merge failed: ${e.message ?? e.code}`; } } }, "Merge"),
+    el("button", { onclick: () => { confirmRow.hidden = true; } }, "Cancel")); } }, "Merge…");
+  sel.addEventListener("change", () => { go.disabled = !sel.value; confirmRow.hidden = true; });
+  return panel("Merge into another member", null,
+    el("p", { class: "sub", style: "margin-top:0" }, "Use this when a player renamed or a name was misread. Their history moves to the member you pick, and this name will match them on future uploads."),
+    el("div", { class: "row" }, sel, go, status), confirmRow);
+}
+
+function viewInvasion(M) {
+  if (!M.invDays.length) return emptyState();
+  if (!S.invDay || !M.invDays.includes(S.invDay)) S.invDay = M.latestInv;
+  const i = M.invDays.indexOf(S.invDay);
+  const seg = el("div", { class: "seg" },
+    el("button", { "aria-pressed": String(S.invView === "day"), onclick: () => { S.invView = "day"; render(); } }, "Daily ranking"),
+    el("button", { "aria-pressed": String(S.invView === "history"), onclick: () => { S.invView = "history"; render(); } }, "Last 14 days"));
+  const picker = el("div", { class: "row", style: "gap:6px;margin-left:auto" },
+    el("button", { disabled: i <= 0 || null, onclick: () => { S.invDay = M.invDays[i - 1]; render(); }, "aria-label": "Previous day" }, "←"),
+    el("select", { id: "inv-day", onchange: (e) => { S.invDay = e.target.value; render(); } }, [...M.invDays].reverse().map((d) => el("option", { value: d, selected: d === S.invDay || null }, d))),
+    el("button", { disabled: i >= M.invDays.length - 1 || null, onclick: () => { S.invDay = M.invDays[i + 1]; render(); }, "aria-label": "Next day" }, "→"));
+  const head = el("div", { class: "row" }, el("h1", {}, "Monster Invasion"), seg, S.invView === "day" ? picker : null);
+  if (S.invView === "history") {
+    const days = M.invDays.slice(-14);
+    const ids = new Map();
+    for (const d of days) for (const r of S.days.get(d).invasion.rows) ids.set(r.m, (ids.get(r.m) ?? 0) + (r.dmg ?? 0));
+    const order = [...ids.entries()].sort((a, b) => b[1] - a[1]);
+    return el("div", { class: "grid" }, head, el("div", { class: "panel scroll" }, el("table", {},
+      el("thead", {}, el("tr", {}, el("th", { class: "sticky-col" }, "Name"), days.map((d) => el("th", { class: "n" }, shortDay(d))), el("th", { class: "n" }, "Total"))),
+      el("tbody", {}, order.map(([id, total]) => el("tr", {}, el("td", { class: "sticky-col" }, memberLink(id)),
+        days.map((d) => { const r = S.days.get(d).invasion.rows.find((x) => x.m === id); return el("td", { class: `n ${r ? "" : "bad"}` }, r ? fmt(r.dmg) : "·"); }),
+        el("td", { class: "n" }, el("b", {}, fmt(total)))))))));
+  }
+  const { rows, prevDay, missing } = invasionDay(M, S.invDay);
+  const top = rows[0]?.dmg ?? 0;
+  const total = rows.reduce((s, r) => s + (r.dmg ?? 0), 0);
+  // Records live in one browser, so the ranking is shared by pasting it into the guild chat.
+  const copyText = [`**Monster Invasion · ${S.invDay}**`,
+    ...rows.map((r, idx) => `${r.rank ?? idx + 1}. ${memberName(r.m)} — ${fmt(r.dmg)}`),
+    `Total: ${fmt(total)}`,
+    missing.length ? `No damage: ${missing.map(memberName).join(", ")}` : null].filter(Boolean).join("\n");
+  const copyBtn = el("button", { onclick: async () => {
+    try { await navigator.clipboard.writeText(copyText); copyBtn.textContent = "Copied"; }
+    catch { copyBtn.textContent = "Copy failed"; }
+    setTimeout(() => { copyBtn.textContent = "Copy for Discord"; }, 1600);
+  } }, "Copy for Discord");
+  head.append(copyBtn);
+  return el("div", { class: "grid" }, head,
+    el("div", { class: "grid g3" },
+      el("div", { class: "panel scroll" }, el("table", { class: "inv-table" },
+        el("thead", {}, el("tr", {}, el("th", {}, "#"), el("th", {}, "Name"), el("th", { class: "n" }, "Damage"), el("th", {}, "Share"), el("th", { class: "n" }, `vs ${prevDay ?? "prev"}`), el("th", { class: "n" }, "Rank Δ"))),
+        el("tbody", {}, rows.map((r, idx) => {
+          const rank = r.rank ?? idx + 1;
+          return el("tr", {},
+            el("td", { class: rank <= 3 ? "medal" : "sub" }, rank <= 3 ? ["1st", "2nd", "3rd"][rank - 1] : String(rank)),
+            el("td", {}, memberLink(r.m)), el("td", { class: "n" }, el("b", {}, fmt(r.dmg))),
+            el("td", {}, el("div", { class: "bar-track" }, el("div", { class: "bar-fill", style: `width:${top ? ((r.dmg ?? 0) / top) * 100 : 0}%` }))),
+            el("td", { class: "n" }, r.prev?.dmg != null && r.dmg != null ? delta(r.dmg - r.prev.dmg) : el("span", { class: "faint" }, "new")),
+            el("td", { class: "n" }, r.prev?.rank != null && r.rank != null ? delta(r.prev.rank - r.rank) : el("span", { class: "faint" }, "—")));
+        })),
+        el("tfoot", {}, el("tr", {}, el("td", { colspan: 2 }, el("b", {}, `${rows.length} members`)), el("td", { class: "n" }, el("b", {}, fmt(total))), el("td", { colspan: 3 }))))),
+      panel(`No damage recorded · ${missing.length}`, null,
+        el("p", { class: "sub", style: "margin-top:0" }, "On the member list for this day but not in the ranking."),
+        missing.length ? el("div", { class: "chips" }, missing.map((id) => el("span", { class: "chip" }, memberLink(id)))) : el("p", {}, "Everyone took part."))));
+}
+
+/* ============================== frames ============================== */
+const FRAME_W = 900;          // list crops at this width stay under the ~1.2 MP the platform sends
+const HEADER_W = 1100;        // header crops are shorter, so they can be sharper: the podium's small names need it
+const HEADER = [0, 0.42];     // guild header / whole podium (its damage plates reach ~40% down the screen)
+const LIST = [0.33, 1];       // scrolling list part
+const SIG_W = 48, SIG_H = 480, BAND = [0.36, 0.86], STEP = 0.25, MAX_SHIFT = 160, KEEP_AFTER = 90, SCENE = 22, MAX_FRAMES = 100;
+// Officers scroll down, so the list only moves up; allowing just a little upward jitter stops the
+// repeating cards from being matched one card off (which undercounted scrolling and skipped rows).
+const MIN_SHIFT = -12, KEEP_EVERY = 0.5, HEAD_SAME = 12;
+let frameSeq = 0;
+
+function crop(src, w, h, [a, b], outW = FRAME_W) {
+  const scale = Math.min(1, outW / w);
+  const sy = Math.round(h * a), sh = Math.round(h * (b - a));
+  const c = document.createElement("canvas");
+  c.width = Math.round(w * scale); c.height = Math.round(sh * scale);
+  c.getContext("2d").drawImage(src, 0, sy, w, sh, 0, 0, c.width, c.height);
+  return new Promise((res, rej) => c.toBlob((bl) => bl ? res(bl) : rej(new Error("Could not encode a frame.")), "image/jpeg", 0.85));
+}
+async function makeFrames(src, w, h, parts, meta) {
+  const out = [];
+  for (const [part, range] of parts) {
+    const blob = await crop(src, w, h, range, part === "header" ? HEADER_W : FRAME_W);
+    out.push({ id: `f${++frameSeq}`, blob, url: URL.createObjectURL(blob), part, status: "queued", ...meta });
+  }
+  return out;
+}
+async function imageFrames(file) {
+  const bmp = await createImageBitmap(file);
+  const tall = bmp.height / bmp.width > 1.7;
+  const frames = await makeFrames(bmp, bmp.width, bmp.height, tall ? [["header", HEADER], ["list", LIST]] : [["full", [0, 1]]], { label: file.name.slice(0, 12) });
+  bmp.close();
+  return frames;
+}
+function signature(src, ctx) {
+  ctx.drawImage(src, 0, 0, SIG_W, SIG_H);
+  const px = ctx.getImageData(0, 0, SIG_W, SIG_H).data;
+  const out = new Uint8Array(SIG_W * SIG_H);
+  for (let i = 0; i < out.length; i++) out[i] = (px[i * 4] * 3 + px[i * 4 + 1] * 6 + px[i * 4 + 2]) / 10;
+  return out;
+}
+function matchShift(prev, cur) {
+  const top = Math.round(BAND[0] * SIG_H), bottom = Math.round(BAND[1] * SIG_H);
+  let best = { shift: 0, cost: Infinity };
+  for (let s = MIN_SHIFT; s <= MAX_SHIFT; s++) {
+    const from = Math.max(top, top - s), to = Math.min(bottom, bottom - s);
+    if (to - from < 60) continue;
+    let sum = 0;
+    for (let r = from; r < to; r += 2) { const a = r * SIG_W, b = (r + s) * SIG_W; for (let x = 0; x < SIG_W; x += 2) sum += Math.abs(cur[a + x] - prev[b + x]); }
+    const cost = sum / (Math.ceil((to - from) / 2) * (SIG_W / 2)) + Math.abs(s) * 0.002;
+    if (cost < best.cost) best = { shift: s, cost };
+  }
+  return best;
+}
+/** Mean difference of the fixed top area (guild header / podium) between two signatures. */
+function headerDiff(a, b) {
+  let sum = 0, n = 0;
+  for (let r = Math.round(0.05 * SIG_H); r < Math.round(0.3 * SIG_H); r += 2) for (let x = 0; x < SIG_W; x += 2) { sum += Math.abs(a[r * SIG_W + x] - b[r * SIG_W + x]); n++; }
+  return sum / n;
+}
+const seek = (v, t) => new Promise((res, rej) => {
+  const ok = () => { v.removeEventListener("seeked", ok); v.removeEventListener("error", bad); res(); };
+  const bad = () => rej(new Error("This video could not be decoded here."));
+  v.addEventListener("seeked", ok); v.addEventListener("error", bad); v.currentTime = t;
+});
+/** Keeps just enough frames that every list row is fully visible once: one each time the list
+ *  has scrolled about a third of the screen, plus the header once each screen has settled. */
+async function videoFrames(file, onProgress) {
+  const v = document.createElement("video");
+  v.muted = true; v.playsInline = true; v.preload = "auto";
+  const src = URL.createObjectURL(file); v.src = src;
+  try {
+    await new Promise((res, rej) => { v.onloadeddata = () => res(); v.onerror = () => rej(new Error("This browser can't play that video. Try Safari or Chrome on a Mac or iPhone, or upload screenshots instead.")); });
+    const { videoWidth: w, videoHeight: h, duration } = v;
+    const sc = document.createElement("canvas"); sc.width = SIG_W; sc.height = SIG_H;
+    const ctx = sc.getContext("2d", { willReadFrequently: true });
+    const frames = [];
+    const keep = async (t, parts) => frames.push(...await makeFrames(v, w, h, parts, { label: `${t.toFixed(1)}s` }));
+    let prev = null, moved = 0, settling = true, lastKept = -1;
+    for (let t = 0; t < duration && frames.length < MAX_FRAMES; t += STEP) {
+      await seek(v, t);
+      const cur = signature(v, ctx);
+      onProgress(t / duration);
+      if (!prev) { prev = cur; continue; }
+      const { shift, cost } = matchShift(prev, cur);
+      const sameHeader = headerDiff(prev, cur) < HEAD_SAME;
+      prev = cur;
+      if (cost > SCENE) {
+        // Same screen but the list jumped too far to match: a fast flick. Fill the gap with the
+        // in-between moments so the rows that flew past are still captured.
+        if (!settling && sameHeader && frames.length + 2 <= MAX_FRAMES) {
+          for (const gt of [t - (STEP * 2) / 3, t - STEP / 3]) { await seek(v, gt); await keep(gt, [["list", LIST]]); }
+          await seek(v, t);
+        }
+        settling = true; continue;
+      }
+      if (settling) {
+        // The new screen matched its previous moment, so it is readable: keep it right away. Waiting
+        // for scrolling to stop lost the rows just under the header (rank 4) when officers scroll at once.
+        await keep(t, [["header", HEADER], ["list", LIST]]); lastKept = t; moved = 0; settling = false;
+        continue;
+      }
+      moved += shift;
+      // Keep a frame after a third of a screen of scrolling, and at least every half second while
+      // the list is moving, so a misjudged scroll distance can never skip rows.
+      if (Math.abs(moved) >= KEEP_AFTER || (Math.abs(moved) > 8 && t - lastKept >= KEEP_EVERY)) { await keep(t, [["list", LIST]]); lastKept = t; moved = 0; }
+    }
+    frames.capped = frames.length >= MAX_FRAMES;
+    if (Math.abs(moved) > 25 && lastKept < duration - STEP && frames.length < MAX_FRAMES) { await seek(v, Math.max(0, duration - 0.1)); await keep(duration, [["list", LIST]]); }
+    onProgress(1);
+    return frames;
+  } finally { URL.revokeObjectURL(src); }
+}
+
+/* ============================== reading with Claude ============================== */
+const PROMPT = `You are reading images from the mobile game Archero 2, captured while a guild officer scrolls through two guild screens. Each image is either a "header" crop (the top of a screen), a "list" crop (the scrolling list part of a screen), or a full screenshot. Consecutive list crops overlap.
+
+Screen 1, the guild member list. Header: guild name, the guild's numeric ID (next to "ID"), "Lv.N" guild level, member count like 42/42, guild power next to a sword icon (e.g. 106.54M), a trophy number, a league name, and an EXP bar like 415700/800000. List: member cards, each with a role badge (Leader, Vice Leader, Elder or Guild Members), the player name, power next to a gold sword icon (e.g. 4.24M), a red devil-icon pill "N time(s)" = Monster Invasion attempts used today (0, 1 or 2), guild contribution next to a green gear icon (e.g. 3200). Ignore the online status at the top right.
+
+Screen 2, Monster Invasion "Guild Member Ranking". Header: a podium of the top 3 players standing on pedestals. The tall CENTER pedestal (badge 1) is rank 1, the LEFT pedestal (badge 2) is rank 2, the RIGHT pedestal (badge 3) is rank 3. On each pedestal: the player name, a title badge, then the damage next to a gold icon (e.g. 989.29B). Always include all three podium players in "ranking". The list starts at rank 4 just under the podium. List: rows with rank number, player name, a small title badge under the name (Foresight, Rewritten, the guild name, etc. — not part of the name) and damage (e.g. 60.33B). The viewing player's own row is pinned at the very bottom.
+
+Rules:
+- Copy names exactly as displayed: capitalization, symbols, accents, Korean/Chinese/Japanese characters. Never translate or correct a name.
+- Copy numbers exactly as displayed with their suffix (K, M, B, T). Do not convert or round.
+- A row cut off at the top or bottom edge: include it only if its name and numbers are fully readable; another image usually shows it whole.
+- List each player once per screen even if several images show them.
+- Use null for anything you cannot read. Never guess.
+- Ignore phone overlays, menus, buttons, popups, boss screens and loading screens.
+
+Reply with only this JSON object:
+{"frames":[{"index":0,"screen":"guild_members"}],
+ "guild":{"name":"","id":"","level":"","members":"","power":"","exp":""},
+ "members":[{"name":"","role":"","power":"","attempts":"","contribution":""}],
+ "ranking":[{"rank":"","name":"","damage":""}]}
+"frames" has one entry per image (index = its position, 0-based) with "screen" one of "guild_members", "monster_invasion_ranking", "other". "guild" is null when no member list header is shown. Use [] for an empty list.`;
+
+function cleanExtraction(raw, n) {
+  const o = raw && typeof raw === "object" ? raw : {};
+  const str = (v) => v == null ? "" : String(v).trim();
+  const frames = Array.isArray(o.frames) ? o.frames : [];
+  return {
+    screens: Array.from({ length: n }, (_, i) => String(frames.find((f) => Number(f?.index) === i)?.screen ?? "other")),
+    guild: o.guild && typeof o.guild === "object" ? { name: str(o.guild.name), id: str(o.guild.id).replace(/\D/g, ""), level: str(o.guild.level), members: str(o.guild.members), power: str(o.guild.power), exp: str(o.guild.exp) } : null,
+    members: (Array.isArray(o.members) ? o.members : []).filter((m) => str(m?.name)).map((m) => ({ name: str(m.name), role: str(m.role), power: str(m.power), attempts: str(m.attempts), contribution: str(m.contribution) })),
+    ranking: (Array.isArray(o.ranking) ? o.ranking : []).filter((r) => str(r?.name)).map((r) => ({ rank: str(r.rank), name: str(r.name), damage: str(r.damage) })),
+  };
+}
+const SAMPLE_ERRORS = {
+  not_granted: "Claude access wasn't allowed for this page. Reload and choose Allow to read screenshots.",
+  sampling_disabled: "Claude isn't available for your account here.",
+  rate_limited: "You've hit a Claude usage limit or sent too much at once. Try again in a few minutes.",
+  session_expired: "Your Claude session expired. Sign in again and reload.",
+  image_rejected: "One of the images couldn't be read. Remove it and try again.",
+  images_unavailable: "This view can't send images to Claude.",
+  invalid_json: "Claude's answer couldn't be read. Try that batch again.",
+  refused: "Claude declined these images. Remove unrelated frames and try again.",
+  cancelled: "Stopped.",
+};
+
+/* ============================== upload view ============================== */
+function uploadState() {
+  return S.upload ??= { day: todayLocal(), frames: [], busy: null, reading: false, ctl: null, results: [], review: null, error: null, saving: false, include: { roster: true, invasion: true }, usage: { input: 0, output: 0 } };
+}
+function matchMember(name) {
+  const key = nameKey(name);
+  const all = [...S.membersById.values()];
+  const exact = all.find((m) => (m.keys ?? []).includes(key));
+  if (exact) return { memberId: exact.id, match: "exact" };
+  const maxDist = key.length >= 10 ? 2 : key.length >= 5 ? 1 : 0;
+  let best = null;
+  for (const m of all) for (const k of m.keys ?? []) { const d = levenshtein(key, k); if (d <= maxDist && (!best || d < best.d)) best = { id: m.id, d }; }
+  return best ? { memberId: best.id, match: "fuzzy" } : { memberId: "new", match: "new" };
+}
+function buildReview(results) {
+  const roster = new Map(), ranking = new Map(); let guild = null;
+  for (const r of results) {
+    if (r.guild && !guild) guild = { ...r.guild };
+    else if (r.guild) for (const k of Object.keys(r.guild)) guild[k] ||= r.guild[k];
+    for (const m of r.members) {
+      const k = nameKey(m.name), ex = roster.get(k);
+      if (ex) { for (const f of ["role", "power", "attempts", "contribution"]) ex[f] ||= m[f]; }
+      else roster.set(k, { ...m, ...matchMember(m.name) });
+    }
+    for (const e of r.ranking) {
+      const n = parseIntish(e.rank);
+      if (n > 0) { if (!ranking.has(n)) ranking.set(n, []); ranking.get(n).push(e); }
+      else { if (!ranking.has(`?${nameKey(e.name)}`)) ranking.set(`?${nameKey(e.name)}`, []); ranking.get(`?${nameKey(e.name)}`).push(e); }
+    }
+  }
+  return { roster: [...roster.values()], ranking: mergeRanking(ranking), guild };
+}
+/** Most common value by `key` (ties go to the earliest read), plus the distinct readings seen. */
+function vote(values, key) {
+  const groups = new Map();
+  for (const v of values) { if (!v) continue; const k = key(v); if (k == null) continue; if (!groups.has(k)) groups.set(k, { v, n: 0 }); groups.get(k).n++; }
+  const all = [...groups.values()];
+  const best = all.reduce((a, b) => (b.n > a.n ? b : a), all[0]);
+  // Settled when one reading clearly wins (at least twice as often as any other), e.g. after a re-read.
+  return { value: best?.v ?? "", alts: all.map((g) => g.v), sure: all.every((g) => g === best || best.n >= 2 * g.n) };
+}
+/** Ranking rows keyed by the rank number printed on screen. Each rank appears in two or three
+ *  overlapping frames; their readings are compared, and anything that doesn't add up is flagged. */
+function mergeRanking(byRank) {
+  const rows = [];
+  for (const [k, reads] of byRank) {
+    const name = vote(reads.map((x) => x.name), nameKey);
+    const dmg = vote(reads.map((x) => x.damage), (v) => { const n = parseNum(v); return n == null ? null : Number(n.toPrecision(4)); });
+    const row = { rank: typeof k === "number" ? String(k) : "", name: name.value, damage: dmg.value, ...matchMember(name.value), flags: [], alts: {} };
+    if (!name.sure) { row.flags.push("Name read differently in different frames."); row.alts.name = name.alts; }
+    if (!dmg.sure) { row.flags.push("Damage read differently in different frames."); row.alts.damage = dmg.alts; }
+    if (!row.rank) row.flags.push("No rank number was read.");
+    rows.push(row);
+  }
+  rows.sort((a, b) => (parseIntish(a.rank) ?? 9999) - (parseIntish(b.rank) ?? 9999) || (parseNum(b.damage) ?? -1) - (parseNum(a.damage) ?? -1));
+  // The pinned "your own row" repeats a rank that is already in the list; fold unranked repeats away.
+  const out = rows.filter((r, i) => r.rank || !rows.some((o, j) => j !== i && o.rank && nameKey(o.name) === nameKey(r.name)));
+  const seen = new Map();
+  for (const r of out) { const k = nameKey(r.name); if (seen.has(k)) { r.flags.push(`Same player as rank ${seen.get(k).rank}.`); seen.get(k).flags.push(`Same player as rank ${r.rank}.`); } else seen.set(k, r); }
+  for (let i = 1; i < out.length; i++) {
+    const a = parseNum(out[i - 1].damage), b = parseNum(out[i].damage);
+    if (a != null && b != null && b > a * 1.0005) out[i].flags.push(`More damage than rank ${out[i - 1].rank}, which can't be right.`);
+  }
+  return out;
+}
+
+async function addFiles(list) {
+  const U = uploadState();
+  const files = [...list].filter((f) => f.type.startsWith("image/") || f.type.startsWith("video/"));
+  if (!files.length || U.reading || U.busy) return;
+  U.error = null; U.review = null;
+  for (const f of files) {
+    try {
+      if (f.type.startsWith("video/")) {
+        U.busy = `Picking frames from ${f.name}… 0%`; render();
+        const fr = await videoFrames(f, (p) => { U.busy = `Picking frames from ${f.name}… ${Math.round(p * 100)}%`; const b = $("#busy"); if (b) b.textContent = U.busy; });
+        U.frames.push(...fr);
+        U.notice = fr.capped ? `Picked ${fr.length} frames, the most one upload takes, so the end of ${f.name} was left out. Record the member list and the ranking as two separate videos.` : `Found ${fr.length} frames to scan in ${f.name}.`;
+      } else {
+        U.busy = `Loading ${f.name}…`; render();
+        U.frames.push(...await imageFrames(f));
+      }
+    } catch (e) { U.error = e.message ?? String(e); }
+  }
+  U.busy = null; render();
+  // Scanning starts by itself: officers never pick or drop frames, so every day is read the same way.
+  if (U.frames.some((f) => f.status !== "done")) readFrames();
+}
+
+const RANK_PROMPT = (ranks) => `These images are from the Monster Invasion "Guild Member Ranking" screen of the mobile game Archero 2.
+Find the entries for these ranks: ${ranks.join(", ")}.
+Every list row starts with its rank number on the left, then the player name (the small badge under the name is a title, not part of the name), then the damage next to a gold icon (e.g. 60.33B). On the podium, the CENTER pedestal (badge 1) is rank 1, the LEFT (badge 2) rank 2, the RIGHT (badge 3) rank 3, each with name and damage.
+Read the rank number from the image itself. Copy names exactly as displayed and numbers with their suffix. Use null for anything you cannot read; never guess, and leave out ranks you cannot find.
+Reply with only this JSON: {"ranking":[{"rank":"","name":"","damage":""}]}`;
+/** Ranks must run 1, 2, 3 … X. Re-reads, with the stronger model, just the frames around any rank
+ *  that is missing or was read two different ways, so the extra read settles it. */
+async function recheckRanks(U, batchSize) {
+  for (let round = 0; round < 2; round++) {
+    if (U.ctl.signal.aborted || !U.results.length) return;
+    const R = buildReview(U.results);
+    const nums = R.ranking.map((r) => parseIntish(r.rank)).filter((n) => n > 0);
+    if (!nums.length) return;
+    const have = new Set(nums), want = [];
+    for (let n = 1; n <= Math.max(...nums); n++) if (!have.has(n)) want.push(n);
+    for (const r of R.ranking) if (r.flags.length && parseIntish(r.rank) > 0) want.push(parseIntish(r.rank));
+    if (!want.length) return;
+    // Frames whose reading covered ranks near the wanted ones (and the podium frames for the top 4).
+    const pick = new Set();
+    for (const res of U.results) {
+      const rs = res.ranking.map((e) => parseIntish(e.rank)).filter((n) => n > 0);
+      if (!rs.length || !res.frames) continue;
+      const lo = Math.min(...rs), hi = Math.max(...rs);
+      if (want.some((n) => n >= lo - 3 && n <= hi + 3)) res.frames.filter((f) => f.screen === "monster_invasion_ranking").forEach((f) => pick.add(f));
+    }
+    if (want.some((n) => n <= 4)) {
+      const labels = new Set(U.frames.filter((f) => f.screen === "monster_invasion_ranking").map((f) => f.label));
+      U.frames.filter((f) => f.part !== "list" && labels.has(f.label)).slice(0, 3).forEach((f) => pick.add(f));
+    }
+    const frames = [...pick].sort((a, b) => U.frames.indexOf(a) - U.frames.indexOf(b)).slice(0, batchSize * 2);
+    if (!frames.length) return;
+    const ranks = [...new Set(want)].sort((a, b) => a - b);
+    U.notice = `Double-checking rank${ranks.length === 1 ? "" : "s"} ${ranks.length > 10 ? `${ranks.slice(0, 10).join(", ")}…` : ranks.join(", ")}…`; render();
+    for (let i = 0; i < frames.length; i += batchSize) {
+      const chunk = frames.slice(i, i + batchSize);
+      try {
+        const raw = await S.sample.json(RANK_PROMPT(ranks), { images: chunk.map((f) => f.blob), modelTier: "complex", effort: "low", signal: U.ctl.signal });
+        const out = cleanExtraction({ ranking: raw?.ranking }, 0);
+        out.order = U.frames.indexOf(chunk[0]);
+        U.results.push(out);
+      } catch (e) { if (U.ctl.signal.aborted || e?.code === "rate_limited" || e?.code === "not_granted") { U.notice = null; return; } }
+    }
+    U.notice = null;
+  }
+}
+
+async function readFrames() {
+  const U = uploadState();
+  if (!S.sample) { U.error = "Claude isn't available in this view. Open this page in claude.ai while signed in."; render(); return; }
+  const limits = await S.sample.limits().catch(() => null);
+  if (!limits?.images) { U.error = SAMPLE_ERRORS.images_unavailable; render(); return; }
+  const batchSize = Math.max(1, Math.min(6, limits.images.maxCount));
+  const pending = U.frames.filter((f) => f.status !== "done");
+  const batches = [];
+  for (let i = 0; i < pending.length; i += batchSize) batches.push(pending.slice(i, i + batchSize));
+  U.reading = true; U.error = null; U.review = null; U.ctl = new AbortController(); render();
+  for (const batch of batches) {
+    if (U.ctl.signal.aborted) break;
+    batch.forEach((f) => { f.status = "reading"; f.error = null; }); render();
+    const listing = batch.map((f, i) => `Image ${i}: ${f.part} crop`).join("\n");
+    try {
+      const raw = await S.sample.json(`${listing}\n\n${PROMPT}`, { images: batch.map((f) => f.blob), modelTier: "default", effort: "low", signal: U.ctl.signal });
+      const out = cleanExtraction(raw, batch.length);
+      out.order = U.frames.indexOf(batch[0]);
+      out.frames = batch;
+      U.results.push(out);
+      batch.forEach((f, i) => { f.status = "done"; f.screen = out.screens[i]; });
+    } catch (e) {
+      batch.forEach((f) => { f.status = "error"; f.error = e?.detail ?? SAMPLE_ERRORS[e?.code] ?? e?.message ?? "Failed"; });
+      if (e?.code && e.code !== "invalid_json" && e.code !== "upstream_error" && e.code !== "image_rejected") { U.error = e.detail ?? SAMPLE_ERRORS[e.code] ?? e.message; break; }
+    }
+    render();
+  }
+  await recheckRanks(U, batchSize);
+  // A member-list scan names its guild: switch this device to that guild so names match its members.
+  const scanned = U.results.length ? buildReview(U.results).guild : null;
+  const gid = guildIdFor(scanned);
+  if (gid && gid !== S.guildId) { rememberGuild(gid); await openGuild(gid); U.notice = `This scan is from ${scanned.name || `guild ${gid}`}, so you're now on that guild.`; }
+  U.reading = false;
+  if (U.results.length) {
+    U.review = buildReview([...U.results].sort((a, b) => a.order - b.order));
+    U.include = { roster: U.review.roster.length > 0, invasion: U.review.ranking.length > 0 };
+  }
+  render();
+}
+
+/* ============================== recording guide ============================== */
+// Schematic phone screens (not game art) showing what one good recording contains, in order.
+const PHONE = (inner) => `<svg viewBox="0 0 120 230" role="img" xmlns="http://www.w3.org/2000/svg">
+  <rect x="2" y="2" width="116" height="226" rx="16" fill="#15131f" stroke="#3a3650" stroke-width="2"/>
+  <rect x="44" y="8" width="32" height="5" rx="2.5" fill="#3a3650"/>
+  <g transform="translate(8 18)">${inner}</g></svg>`;
+const ARROW = (x, y1, y2) => `<g stroke="#ffd23f" stroke-width="4" stroke-linecap="round" fill="none"><path d="M${x} ${y1}V${y2}"/><path d="M${x - 8} ${y2 - 9}L${x} ${y2}L${x + 8} ${y2 - 9}"/></g>`;
+const memberCard = (y, att) => `<rect x="4" y="${y}" width="96" height="22" rx="4" fill="#efe3c4"/><circle cx="14" cy="${y + 11}" r="7" fill="#b9a77c"/>
+  <rect x="25" y="${y + 4}" width="28" height="5" rx="2" fill="#5b8cff"/><rect x="56" y="${y + 4}" width="24" height="5" rx="2" fill="#7a6a4a"/>
+  <rect x="25" y="${y + 13}" width="16" height="5" rx="2" fill="#a07a2a"/><rect x="44" y="${y + 13}" width="18" height="5" rx="2" fill="${att ? "#b02a3a" : "#7a2a3a"}"/><rect x="65" y="${y + 13}" width="16" height="5" rx="2" fill="#3f9b4a"/>`;
+const guildHeader = `<rect width="104" height="40" rx="6" fill="#3a5bd6"/><circle cx="17" cy="20" r="12" fill="#f0b429"/>
+  <rect x="34" y="8" width="44" height="6" rx="3" fill="#dfe6ff"/><rect x="34" y="18" width="30" height="5" rx="2.5" fill="#b8c6ff"/><rect x="34" y="29" width="62" height="5" rx="2.5" fill="#4cd964"/>`;
+const rankRow = (y) => `<rect x="4" y="${y}" width="96" height="18" rx="4" fill="#5a1a2c"/><rect x="9" y="${y + 6}" width="7" height="6" rx="2" fill="#f3d488"/>
+  <circle cx="25" cy="${y + 9}" r="6" fill="#b9a77c"/><rect x="35" y="${y + 4}" width="30" height="5" rx="2" fill="#f4e9ff"/><rect x="35" y="${y + 11}" width="18" height="4" rx="2" fill="#7f8cff"/><rect x="74" y="${y + 6}" width="22" height="6" rx="3" fill="#ffd23f"/>`;
+const podium = `<rect width="104" height="16" rx="5" fill="#f0b429"/><rect x="22" y="5" width="60" height="6" rx="3" fill="#7a3d00"/>
+  <rect x="8" y="40" width="26" height="24" rx="3" fill="#7d8597"/><rect x="39" y="28" width="26" height="36" rx="3" fill="#f0b429"/><rect x="70" y="46" width="26" height="18" rx="3" fill="#b06a3a"/>
+  <circle cx="21" cy="32" r="7" fill="#c9c2e8"/><circle cx="52" cy="20" r="7" fill="#c9c2e8"/><circle cx="83" cy="38" r="7" fill="#c9c2e8"/>`;
+const GUIDE_STEPS = [
+  { title: "1 · Start recording", text: "Open the guild screen, start your phone's screen recording, tap Guild Members.",
+    svg: PHONE(`<rect width="104" height="200" rx="6" fill="#211d33"/>${guildHeader}
+      <rect x="4" y="50" width="46" height="22" rx="5" fill="#8a2a3a"/><rect x="54" y="50" width="46" height="22" rx="5" fill="#6a4a2a"/>
+      <rect x="4" y="78" width="46" height="22" rx="5" fill="#3a6ab0"/><rect x="54" y="78" width="46" height="22" rx="5" fill="#6a4ab0"/>
+      <rect x="4" y="174" width="30" height="16" rx="4" fill="#e3b341"/><rect x="38" y="172" width="30" height="20" rx="4" fill="#5b8cff" stroke="#ffd23f" stroke-width="3"/><rect x="72" y="174" width="30" height="16" rx="4" fill="#3f9b4a"/>
+      <circle cx="53" cy="182" r="10" fill="none" stroke="#ffd23f" stroke-width="2" opacity=".7"/>`) },
+  { title: "2 · Scroll members to the bottom", text: "Scroll slowly and steadily until the last member shows.",
+    svg: PHONE(`<rect width="104" height="200" rx="6" fill="#211d33"/>${guildHeader}
+      ${[46, 72, 98, 124, 150, 176].map((y, i) => memberCard(y, i % 3)).join("")}${ARROW(96, 70, 180)}`) },
+  { title: "3 · Open the ranking", text: "Go back, tap Monster Invasion, then Guild Member Ranking.",
+    svg: PHONE(`<rect width="104" height="200" rx="6" fill="#2a0f1c"/>${podium}${[72, 94, 116, 138, 160].map(rankRow).join("")}
+      <rect x="0" y="182" width="104" height="18" rx="4" fill="#7a2036"/>`) },
+  { title: "4 · Scroll to the end, stop", text: "Scroll the ranking to the last player, then stop recording.",
+    svg: PHONE(`<rect width="104" height="200" rx="6" fill="#2a0f1c"/>${podium}${[72, 94, 116, 138, 160].map(rankRow).join("")}
+      <rect x="0" y="182" width="104" height="18" rx="4" fill="#7a2036"/>${ARROW(96, 76, 174)}
+      <circle cx="52" cy="-6" r="0"/>`) },
+];
+function recordGuide(open) {
+  const figure = (s) => { const f = el("figure", {}); const t = document.createElement("template"); t.innerHTML = s.svg; f.append(t.content, el("figcaption", {}, el("b", {}, s.title), s.text)); return f; };
+  return el("details", { class: "panel guide", open: open || null },
+    el("summary", {}, "How to record · one video, both screens"),
+    el("div", { class: "steps-row" }, GUIDE_STEPS.map(figure)),
+    el("ul", { class: "tips" },
+      el("li", {}, "Hold the phone upright and record the game only; about 20–60 seconds is plenty."),
+      el("li", {}, "Scroll slowly, about one screen every two seconds, and let the list stop before the next swipe."),
+      el("li", {}, "If a loading circle appears at the bottom of the list, wait for the next players to appear before scrolling on."),
+      el("li", {}, "Close pop-ups and chat first. Screenshots also work: take one per screen as you scroll."),
+      el("li", {}, "Only one screen? Fine — record just the member list or just the ranking.")));
+}
+
+function scanProgress(U) {
+  const n = U.frames.length, done = U.frames.filter((f) => f.status === "done").length, failed = U.frames.filter((f) => f.status === "error").length;
+  const text = U.reading ? `Scanning with Claude… ${done} of ${n} frames`
+    : failed ? `${failed} of ${n} frames couldn't be read.`
+    : done === n ? `Scanned all ${n} frames.` : `${n - done} frames waiting.`;
+  return el("div", { class: "grid", style: "gap:10px" },
+    el("div", { class: "progress", role: "progressbar", "aria-valuemin": "0", "aria-valuemax": String(n), "aria-valuenow": String(done) },
+      el("div", { class: `fill ${failed && !U.reading ? "bad" : ""}`, style: `width:${n ? (done / n) * 100 : 0}%` })),
+    el("div", { class: "row" },
+      el("span", { class: "sub" }, text),
+      U.reading ? el("button", { onclick: () => U.ctl?.abort() }, "Stop") : null,
+      !U.reading && done < n ? el("button", { class: "primary", onclick: readFrames }, failed ? "Try again" : "Continue scanning") : null,
+      !U.reading ? el("button", { onclick: () => { U.frames.forEach((f) => URL.revokeObjectURL(f.url)); Object.assign(U, { frames: [], results: [], review: null, notice: null, error: null }); render(); } }, "Start over") : null));
+}
+
+function viewUpload(M) {
+  const U = uploadState();
+  if (!S.canWrite) return el("div", { class: "panel empty" }, el("h2", {}, "Officers only"), el("p", {}, "Only people who can edit this page can upload records. Ask the page owner to make you a Contributor or Editor."));
+  if (SITE && !hasApiKey()) return el("div", { class: "grid" },
+    el("div", { class: "row" }, el("h1", {}, "Upload a day"), el("span", { class: "sub" }, "One-time setup first: add your Anthropic API key.")),
+    S.settingsMsg ? el("div", { class: "note" }, (() => { const m = S.settingsMsg; S.settingsMsg = null; return m; })()) : null,
+    apiKeyPanel(), recordGuide(true));
+  const fileInput = el("input", { type: "file", id: "file-input", accept: "image/*,video/*", multiple: true, hidden: true, onchange: (e) => { addFiles(e.target.files); e.target.value = ""; } });
+  const drop = el("div", { class: "drop", tabindex: "0", role: "button", onclick: () => fileInput.click(), onkeydown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); } },
+    ondragover: (e) => { e.preventDefault(); drop.classList.add("over"); }, ondragleave: () => drop.classList.remove("over"),
+    ondrop: (e) => { e.preventDefault(); drop.classList.remove("over"); addFiles(e.dataTransfer.files); } },
+    el("b", {}, "Drop a screen recording or screenshots"),
+    el("span", { class: "sub" }, "Or click to choose, or paste. Record Guild Members scrolled to the bottom, then Monster Invasion → Guild Member Ranking scrolled to the bottom. Scanning starts by itself."), fileInput);
+  if (U.reading || U.busy) drop.classList.add("locked");
+  const existing = S.days.get(U.day);
+  const parts = [
+    el("div", { class: "row" }, el("h1", {}, "Upload a day"), el("span", { class: "sub" }, SITE ? "Claude reads the frames with your Anthropic API key." : "Reading uses your own Claude account. The first read asks you to allow it.")),
+    recordGuide(!U.frames.length && !U.review),
+    el("section", { class: "panel" }, el("div", { class: "body grid", style: "padding-top:16px" },
+      el("div", { class: "row" }, el("label", { class: "sub", for: "upload-day" }, "Day"), el("input", { type: "date", id: "upload-day", value: U.day, onchange: (e) => { U.day = e.target.value; render(); } }),
+        existing ? el("span", { class: "pill gold" }, `Already saved: ${[existing.roster ? "member list" : null, existing.invasion ? "ranking" : null].filter(Boolean).join(" + ")}`) : null),
+      drop,
+      U.busy ? el("p", { id: "busy", class: "sub" }, U.busy) : U.notice ? el("p", { class: "sub" }, U.notice) : null,
+      U.error ? el("div", { class: "note" }, U.error) : null,
+      U.frames.length ? scanProgress(U) : null)),
+  ];
+  if (U.review) parts.push(reviewSection(U));
+  return el("div", { class: "grid" }, parts);
+}
+
+/* ============================== daily reset ============================== */
+// The reset is one moment worldwide, so it is stored in UTC and shown in each viewer's local time.
+const pad2 = (n) => String(n).padStart(2, "0");
+function resetLocalHM() {
+  const m = /^(\d\d):(\d\d)$/.exec(S.config.resetUtc ?? ""); if (!m) return null;
+  const d = new Date(); d.setUTCHours(Number(m[1]), Number(m[2]), 0, 0);
+  return { h: d.getHours(), m: d.getMinutes() };
+}
+function nextReset(now = new Date()) {
+  const hm = resetLocalHM(); if (!hm) return null;
+  const t = new Date(now); t.setHours(hm.h, hm.m, 0, 0);
+  if (t <= now) t.setDate(t.getDate() + 1);
+  return t;
+}
+const fmtClock = (h, m) => new Date(2000, 0, 1, h, m).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+function fmtSpan(ms) {
+  const min = Math.max(0, Math.round(ms / 60000));
+  if (min < 60) return `${min}m`;
+  const h = Math.floor(min / 60);
+  return h < 24 ? `${h}h ${pad2(min % 60)}m` : `${Math.floor(h / 24)}d ${h % 24}h`;
+}
+function lastUpload() {
+  let best = null;
+  for (const [day, d] of S.days) for (const part of ["roster", "invasion"]) {
+    const t = d[part]?.savedAt ? Date.parse(d[part].savedAt) : NaN;
+    if (!Number.isNaN(t) && (!best || t > best.t)) best = { t, day, part };
+  }
+  return best;
+}
+function resetBanner() {
+  if (!S.guildId) return ""; // nothing to count down to before a guild has any records
+  const now = new Date(), next = nextReset(now);
+  const today = S.days.get(todayLocal()) ?? {};
+  const has = { roster: !!today.roster?.rows?.length, invasion: !!today.invasion?.rows?.length };
+  const last = lastUpload();
+  const lastText = last ? `Last upload ${fmtSpan(now - last.t)} ago` : "Nothing uploaded yet";
+  const check = (ok, label) => el("span", { class: `chk ${ok ? "yes" : "no"}` }, `${ok ? "✓" : "✗"} ${label}`);
+  if (!next) {
+    return el("div", { class: "reset-bar" },
+      el("span", {}, S.canWrite ? el("span", {}, "Set your server's daily reset time in ", el("a", { href: "#settings" }, "Settings"), " to see a countdown.") : "No reset time set yet."),
+      check(has.roster, "Member list today"), check(has.invasion, "Ranking today"),
+      el("span", { class: "last" }, lastText));
+  }
+  const left = next - now, both = has.roster && has.invasion;
+  const tone = both ? "ok" : left <= 60 * 60000 ? "late" : "warn";
+  // How far ahead of the coming reset today's newest upload landed: the closer, the more final the numbers.
+  const todayAt = Math.max(0, ...["roster", "invasion"].map((k) => Date.parse(today[k]?.savedAt ?? "") || 0));
+  const beforeReset = todayAt ? ` · ${fmtSpan(next - todayAt)} before reset` : "";
+  return el("div", { class: `reset-bar ${tone}`, role: "status" },
+    el("span", { class: "clock" }, `Reset in ${fmtSpan(left)}`),
+    check(has.roster, "Member list"), check(has.invasion, "Ranking"),
+    el("span", { class: "last" }, `${lastText}${beforeReset}`));
+}
+
+/* ============================== settings view ============================== */
+const REMIND_KEY = "guild-ledger:reminder";
+function loadReminder() {
+  const dflt = { before: 30, device: /android/i.test(navigator.userAgent) ? "android" : "iphone" };
+  try { return { ...dflt, ...JSON.parse(localStorage.getItem(REMIND_KEY) ?? "{}") }; } catch { return dflt; }
+}
+function saveReminder() { try { localStorage.setItem(REMIND_KEY, JSON.stringify(S.reminder)); } catch { /* per-viewer convenience only */ } }
+async function saveResetTime(localHM) {
+  if (!S.guildId) throw new Error("Upload your guild's member list first, so the page knows your guild.");
+  const [h, m] = localHM.split(":").map(Number);
+  const d = new Date(); d.setHours(h, m, 0, 0);
+  const ref = gcol("config").doc("guild");
+  const snap = await ref.get();
+  await ref.set({ ...(snap.exists ? snap.data() : {}), resetUtc: `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}` });
+}
+const SETTINGS_KEY = "guild-ledger:settings";
+/** Website build only: the officer's Anthropic API key, kept in this browser (runtime.js reads it). */
+const hasApiKey = () => { try { return !!JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}").apiKey; } catch { return false; } };
+function apiKeyPanel() {
+  let saved = ""; try { saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}").apiKey || ""; } catch { /* blocked storage */ }
+  const input = el("input", { type: "password", id: "api-key", autocomplete: "off", spellcheck: "false", placeholder: "sk-ant-…", value: saved, style: "flex:1 1 220px;min-width:0" });
+  const store = (key) => {
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({ apiKey: key })); S.settingsMsg = key ? "API key saved in this browser." : "API key removed."; }
+    catch { S.settingsMsg = "This browser blocked saving. Turn off private browsing and try again."; }
+    render();
+  };
+  const consoleLink = (label) => el("a", { href: "https://platform.claude.com", target: "_blank", rel: "noopener noreferrer" }, label);
+  return panel("Anthropic API key", null,
+    el("p", { class: "sub", style: "margin-top:0" }, "Claude reads your recordings using your own API key, so you pay Anthropic directly: roughly $0.50 per day of recordings. The key stays in this browser and is only ever sent to Anthropic."),
+    saved ? null : el("ol", { class: "howto", style: "margin-bottom:12px" },
+      el("li", {}, "Go to ", consoleLink("platform.claude.com"), " and sign in or create an account."),
+      el("li", {}, "Open ", el("b", {}, "Billing"), " and add a little credit. $5 lasts a guild a week or more."),
+      el("li", {}, "Open ", el("b", {}, "API keys"), " → ", el("b", {}, "Create key"), ", name it ", el("b", {}, "Guild Ledger"), ", and copy it."),
+      el("li", {}, "Paste it here and press ", el("b", {}, "Save"), ". Use a key made just for this, and remove it on shared devices.")),
+    el("div", { class: "row" }, el("label", { class: "sub", for: "api-key" }, "API key"), input,
+      el("button", { class: "primary", onclick: () => store(input.value.trim()) }, "Save"),
+      saved ? el("button", { onclick: () => store("") }, "Remove") : null));
+}
+function viewSettings() {
+  S.reminder ??= loadReminder();
+  const R = S.reminder, hm = resetLocalHM();
+  const msg = S.settingsMsg; S.settingsMsg = null;
+  const resetInput = el("input", { type: "time", id: "reset-time", value: hm ? `${pad2(hm.h)}:${pad2(hm.m)}` : "", disabled: !S.canWrite || null });
+  const remind = hm ? (() => { const t = new Date(2000, 0, 1, hm.h, hm.m - R.before); return { h: t.getHours(), m: t.getMinutes() }; })() : null;
+  const remindText = remind ? fmtClock(remind.h, remind.m) : "your chosen time";
+  const steps = R.device === "iphone" ? [
+    ["Open the ", el("b", {}, "Shortcuts"), " app and tap ", el("b", {}, "Automation"), " at the bottom, then ", el("b", {}, "+"), " (New Automation)."],
+    ["Choose ", el("b", {}, "Time of Day"), ", set it to ", el("b", {}, remindText), ", Repeat ", el("b", {}, "Daily"), ", select ", el("b", {}, "Run Immediately"), ", then tap Next."],
+    ["Tap ", el("b", {}, "New Blank Automation"), ", add the action ", el("b", {}, "Show Notification"), " and type: ", el("b", {}, `Record the guild list, reset in ${R.before} min`), "."],
+    ["Add the action ", el("b", {}, "Open App"), ", choose ", el("b", {}, "Archero 2"), ", and tap ", el("b", {}, "Done"), "."],
+    ["Each day at ", el("b", {}, remindText), " your phone opens the game: record Guild Members, then the Monster Invasion ranking, and upload here."],
+  ] : [
+    ["Open the ", el("b", {}, "Clock"), " app and go to ", el("b", {}, "Alarm"), ", then tap ", el("b", {}, "+"), "."],
+    ["Set it to ", el("b", {}, remindText), " and tick ", el("b", {}, "every day"), " (all seven days)."],
+    ["Name the alarm ", el("b", {}, `Record guild list, reset in ${R.before} min`), " and save it."],
+    ["When it rings, open Archero 2, record Guild Members, then the Monster Invasion ranking, and upload here."],
+  ];
+  const seg = (key, opts) => el("div", { class: "seg" }, opts.map(([v, label]) => el("button", { "aria-pressed": String(R[key] === v), onclick: () => { R[key] = v; saveReminder(); render(); } }, label)));
+  return el("div", { class: "grid" },
+    el("h1", {}, "Settings"),
+    SITE ? apiKeyPanel() : null,
+    msg ? el("div", { class: "note" }, msg) : null,
+    panel("Daily reset time", null,
+      el("p", { class: "sub", style: "margin-top:0" }, SITE ? "When the game's daily reset happens, in your local time. Overview shows a countdown to it." : "When the game's daily reset happens, in your local time. Everyone on this page sees the countdown on Overview, converted to their own time zone."),
+      el("div", { class: "row" }, el("label", { for: "reset-time", class: "sub" }, "Resets at"), resetInput,
+        S.canWrite ? el("button", { class: "primary", onclick: async () => {
+          if (!resetInput.value) { S.settingsMsg = "Pick a time first."; render(); return; }
+          try { await saveResetTime(resetInput.value); S.settingsMsg = "Reset time saved for the whole guild."; }
+          catch (e) { S.settingsMsg = e?.code === "invalid_argument" ? "You don't have permission to change this." : `Couldn't save: ${e?.message ?? e}`; }
+          render();
+        } }, "Save") : el("span", { class: "faint" }, "Only officers can change this."))),
+    panel("Daily reminder on your phone", null,
+      el("p", { class: "sub", style: "margin-top:0" }, "This page can't send notifications, so set your phone to remind you before reset. It takes about two minutes, once."),
+      el("div", { class: "row" }, seg("device", [["iphone", "iPhone"], ["android", "Android"]]),
+        el("label", { class: "sub", for: "remind-before" }, "Remind me"),
+        el("select", { id: "remind-before", onchange: (e) => { R.before = Number(e.target.value); saveReminder(); render(); } },
+          [15, 30, 60, 120].map((n) => el("option", { value: n, selected: R.before === n || null }, n < 60 ? `${n} min before reset` : `${n / 60} h before reset`)))),
+      hm ? null : el("p", { class: "note", style: "margin:10px 0 0" }, "Set the daily reset time above first, so the steps show the exact time."),
+      el("ol", { class: "howto" }, steps.map((parts) => el("li", {}, parts)))));
+}
+
+/* ============================== add to home screen ============================== */
+// A page inside claude.ai can't install itself, so this shows the browser's own steps for the viewer's device.
+const SHARE_GLYPH = '<svg class="glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M5 11v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9"/></svg>';
+const DOTS_GLYPH = '<svg class="glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="12" cy="19" r="1.2"/></svg>';
+const HOME_STEPS = {
+  iphone: [`Open this page's link in <b>Safari</b>${SITE ? "" : " (not inside the Claude app)"}.`, `Tap the <b>Share</b> button ${SHARE_GLYPH} at the bottom of the screen.`, "Scroll down and tap <b>Add to Home Screen</b>.", "Tap <b>Add</b>. The page now opens from your home screen like an app."],
+  android: [`Open this page's link in <b>Chrome</b>${SITE ? "" : " (not inside the Claude app)"}.`, `Tap the menu ${DOTS_GLYPH} at the top right.`, "Tap <b>Add to Home screen</b> (or <b>Install</b>).", "Tap <b>Add</b>. The page now opens from your home screen like an app."],
+  computer: ["<b>Chrome or Edge:</b> menu ⋮ → <b>Cast, save and share</b> → <b>Create shortcut</b> (tick Open as window).", "<b>Safari on Mac:</b> <b>File</b> → <b>Add to Dock</b>.", "Or simply bookmark this page."],
+};
+function homeDevice() {
+  const ua = navigator.userAgent;
+  if (/iPhone|iPad|iPod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return "iphone";
+  return /Android/i.test(ua) ? "android" : "computer";
+}
+function openHomeSheet() {
+  let device = homeDevice();
+  const dlg = el("dialog", { class: "sheet", "aria-labelledby": "home-title" });
+  const draw = () => {
+    const list = el("ol", {}); list.innerHTML = HOME_STEPS[device].map((t) => `<li>${t}</li>`).join("");
+    dlg.replaceChildren(el("div", { class: "in" },
+      el("h2", { id: "home-title" }, "Add Guild Ledger to your home screen"),
+      el("div", { class: "seg" }, [["iphone", "iPhone / iPad"], ["android", "Android"], ["computer", "Computer"]].map(([k, label]) =>
+        el("button", { type: "button", "aria-pressed": String(device === k), onclick: () => { device = k; draw(); } }, label))),
+      list,
+      el("div", { class: "row", style: "justify-content:flex-end" }, el("button", { type: "button", class: "primary", onclick: () => dlg.close() }, "Got it"))));
+  };
+  draw();
+  dlg.addEventListener("close", () => dlg.remove());
+  dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); }); // tap outside to close
+  document.body.append(dlg);
+  dlg.showModal();
+}
+
+/* ============================== info pages ============================== */
+function discordLine() {
+  const btn = el("button", { type: "button", class: "alt", onclick: async () => {
+    try { await navigator.clipboard.writeText(DISCORD); btn.textContent = "Copied"; } catch { btn.textContent = "Copy failed"; }
+    setTimeout(() => { btn.textContent = "Copy"; }, 1600);
+  } }, "Copy");
+  return el("p", {}, "Discord: ", el("b", {}, DISCORD), " ", btn);
+}
+const INFO = {
+  about: () => [el("h1", {}, "About Guild Ledger"),
+    el("p", {}, "Guild Ledger is a free tool for Archero 2 guild officers. Record the Guild Members screen and the Monster Invasion ranking, and it turns them into daily records: member power and contribution, Monster Invasion attempts and damage, and how each member grows over time."),
+    el("h2", {}, "How it works"),
+    el("ul", {},
+      ...(SITE ? [
+        el("li", {}, "The page runs entirely in your browser. There are no accounts and no server storing your guild's data."),
+        el("li", {}, "Officers upload a screen recording; Claude, an AI model by Anthropic, reads the frames using the officer's own Anthropic API key, and the officer checks the table before saving."),
+        el("li", {}, "Records are saved only in the browser on the device you use. They are not synced or shared.")] : [
+        el("li", {}, "It runs as a page on claude.ai. Everyone the page is shared with sees the same guild records."),
+        el("li", {}, "Officers upload a screen recording; Claude reads the frames using the officer's own Claude account, and the officer checks the table before saving."),
+        el("li", {}, "No API key or separate sign-up is needed.")])),
+    el("p", {}, "Guild Ledger is an unofficial fan-made tool. It is not affiliated with, endorsed, or sponsored by Habby.")],
+  privacy: () => [el("h1", {}, "Privacy Policy"), el("p", { class: "faint" }, "Last updated: 6 November 2026"),
+    el("h2", {}, "What is stored"),
+    el("p", {}, SITE
+      ? "The guild records you save (player names, roles, power, contribution, Monster Invasion attempts and damage) and your Anthropic API key are stored only in your browser's local storage on that device. Nothing is sent to us. Clearing your browser's site data deletes them. Screenshots and recordings are not stored; only the numbers you approve are saved."
+      : "The guild records you save (player names, roles, power, contribution, Monster Invasion attempts and damage) are stored with this page on claude.ai, and everyone the page is shared with can see them. Screenshots and recordings are not stored; only the numbers you approve are saved."),
+    el("h2", {}, "Reading screenshots"),
+    el("p", {}, SITE
+      ? "When you upload, the frames picked from your recording and your API key are sent directly from your browser to Anthropic's API to be read. Anthropic's privacy policy and terms apply. Our hosting (GitHub Pages) may keep standard request logs such as IP addresses."
+      : "When an officer presses Read, the selected frames are sent to Claude through that officer's claude.ai account and count toward their Claude usage. Anthropic's privacy policy and terms apply."),
+    el("h2", {}, "What we do not collect"),
+    el("p", {}, "Guild Ledger has no analytics, advertising or separate accounts. Fonts load from Google Fonts, which receives your IP address and browser details."),
+    el("h2", {}, "Contact"), discordLine()],
+  copyright: () => [el("h1", {}, "Copyright and DMCA"),
+    el("p", {}, "Archero 2 is a trademark of Habby Pte. Ltd. Game data, names, images, and assets are © Habby Pte. Ltd. Guild Ledger is an unofficial fan-run community tool and is not affiliated with, endorsed, or sponsored by Habby."),
+    el("p", {}, "Screenshots and recordings you upload are only used to read the numbers; Guild Ledger does not publish or keep them."),
+    el("h2", {}, "Takedown requests"),
+    el("p", {}, "If you believe something on this page infringes your copyright or trademark, message me on Discord with what it is, your rights in it, and how to reach you. I will review it and remove the material where appropriate."),
+    discordLine()],
+  terms: () => [el("h1", {}, "Terms of Service"), el("p", { class: "faint" }, "Last updated: 6 November 2026"),
+    el("p", {}, "By using Guild Ledger you agree to these terms."),
+    el("ul", {},
+      el("li", {}, "Guild Ledger is provided free and \u201cas is\u201d, without warranties of any kind. Readings made by AI can be wrong; always check the table before saving."),
+      el("li", {}, SITE ? "You are responsible for your Anthropic API key, its use and its costs, and for following Anthropic's terms. Your records live only in your browser; we cannot recover them if they are deleted." : "Reading screenshots uses your own Claude account and its usage limits, under Anthropic's terms."),
+      el("li", {}, "Use the tool only for your own guild's information, and follow the game's terms of service."),
+      el("li", {}, "We may change or discontinue the tool at any time. To the extent the law allows, we are not liable for any loss arising from its use.")),
+    el("h2", {}, "Contact"), discordLine()],
+  contact: () => [el("h1", {}, "Contact"),
+    el("p", {}, "Questions, ideas, bug reports or takedown requests: message me on Discord. It's the only way to reach me."),
+    discordLine(),
+    el("ol", {},
+      el("li", {}, "Open Discord and go to ", el("b", {}, "Friends → Add Friend"), "."),
+      el("li", {}, "Type ", el("b", {}, DISCORD), " and send the request."),
+      el("li", {}, "Send me a message. For a bug, say which page it was on, and a screenshot helps."))],
+};
+function viewInfo(name) { return el("article", { class: "panel doc" }, el("div", { class: "body", style: "padding:20px" }, INFO[name]())); }
+
+function nameCells(row, onChange) {
+  const opts = [...S.membersById.values()].sort((a, b) => a.name.localeCompare(b.name));
+  return [
+    el("td", {}, el("input", { value: row.name, style: "width:150px", oninput: (e) => { row.name = e.target.value; if (row.match !== "manual") Object.assign(row, matchMember(row.name)); onChange(false); }, onchange: () => onChange(true) })),
+    el("td", {}, el("select", { class: row.match === "fuzzy" ? "fuzzy" : "", onchange: (e) => { row.memberId = e.target.value === "new" ? "new" : e.target.value; row.match = "manual"; onChange(true); } },
+      el("option", { value: "new", selected: row.memberId === "new" || null }, "+ New member"),
+      opts.map((m) => el("option", { value: m.id, selected: row.memberId === m.id || null }, m.name)))),
+  ];
+}
+function numCell(row, field, parse, width = 90) {
+  const i = el("input", { value: row[field], style: `width:${width}px`, class: row[field] && parse(row[field]) == null ? "badval" : "", oninput: (e) => { row[field] = e.target.value; i.classList.toggle("badval", !!row[field] && parse(row[field]) == null); } });
+  return el("td", {}, i);
+}
+function reviewSection(U) {
+  const R = U.review;
+  if (!S.guildId && !guildIdFor(R.guild)) return el("section", { class: "grid" }, el("div", { class: "note" }, el("b", {}, "Which guild is this? "), "Include the Guild Members screen (with the guild name and ID at the top) in your first recording, so the page knows your guild. After that, ranking-only uploads are fine."));
+  const rerender = (full) => { if (full) render(); };
+  const known = [...S.membersById.values()];
+  const inList = new Set(R.roster.map((r) => r.memberId));
+  const absent = R.roster.length ? known.filter((m) => !inList.has(m.id)) : [];
+  const section = (key, title, extra, table) => el("div", { class: "grid", style: "gap:8px" },
+    el("label", { class: "row", style: "font-weight:700" }, el("input", { type: "checkbox", id: `inc-${key}`, checked: U.include[key] || null, onchange: (e) => { U.include[key] = e.target.checked; render(); } }), title,
+      S.days.get(U.day)?.[key] && U.include[key] ? el("span", { class: "pill gold" }, `Replaces the saved ${key === "roster" ? "member list" : "ranking"} for ${U.day}`) : null),
+    extra, el("div", { class: "panel scroll", style: U.include[key] ? "" : "opacity:.5" }, table));
+  const parts = [el("h2", { style: "font-size:16px" }, "Check before saving"),
+    el("p", { class: "sub", style: "margin:0" }, "Fix misread names or numbers. Under Matches, link a renamed player to their earlier entry so their history continues; amber marks a close match worth checking.")];
+  if (!R.roster.length && !R.ranking.length) parts.push(el("div", { class: "note" }, "No member list or ranking rows were found in these frames."));
+  // Coverage checks: the guild header says how many members there are, and ranks should run 1, 2, 3… without gaps.
+  const fix = "Rows were probably skipped while scrolling. Add screenshots of the missing part above and press Read again (they merge into this review), or record again scrolling a little slower.";
+  const expected = parseIntish((R.guild?.members ?? "").split("/")[0]);
+  if (R.roster.length && expected && R.roster.length < expected) parts.push(el("div", { class: "note" }, el("b", {}, `Found ${R.roster.length} of ${expected} members. `), fix));
+  const ranks = R.ranking.map((r) => parseIntish(r.rank)).filter((n) => n != null && n > 0);
+  if (ranks.length) {
+    const have = new Set(ranks), gaps = [];
+    for (let n = 1; n <= Math.max(...ranks); n++) if (!have.has(n)) gaps.push(n);
+    if (gaps.length) parts.push(el("div", { class: "note" }, el("b", {}, `Ranking is missing rank${gaps.length === 1 ? "" : "s"} ${gaps.length > 8 ? `${gaps.slice(0, 8).join(", ")}…` : gaps.join(", ")}. `), fix));
+  }
+  if (R.roster.length) parts.push(section("roster", `Member list · ${R.roster.length} members`,
+    R.guild ? el("p", { class: "sub", style: "margin:0" }, `${R.guild.name || "Guild"} · Lv ${R.guild.level || "—"} · ${R.guild.members || "—"} members · power ${R.guild.power || "—"} · EXP ${R.guild.exp || "—"}`) : null,
+    el("table", {}, el("thead", {}, el("tr", {}, ["Name", "Matches", "Role", "Power", "Invasion /2", "Contribution", ""].map((h) => el("th", {}, h)))),
+      el("tbody", {}, R.roster.map((r) => el("tr", {}, nameCells(r, rerender),
+        el("td", {}, el("input", { value: r.role, style: "width:110px", oninput: (e) => { r.role = e.target.value; } })),
+        numCell(r, "power", parseNum), numCell(r, "attempts", parseIntish, 50), numCell(r, "contribution", parseNum, 70),
+        el("td", {}, el("button", { class: "link", "aria-label": "Remove row", onclick: () => { R.roster = R.roster.filter((x) => x !== r); render(); } }, "✕"))))),
+      absent.length ? el("tfoot", {}, el("tr", {}, el("td", { colspan: 7, class: "sub", style: "white-space:normal" }, `Known members not in this list (${absent.length}): ${absent.slice(0, 30).map((m) => m.name).join(", ")}${absent.length > 30 ? "…" : ""}. They may have left, or part of the list was skipped.`))) : null)));
+  if (R.ranking.length) parts.push(section("invasion", `Monster Invasion ranking · ${R.ranking.length} entries`, null,
+    el("table", {}, el("thead", {}, el("tr", {}, ["Rank", "Name", "Matches", "Damage", "Check", ""].map((h) => el("th", {}, h)))),
+      el("tbody", {}, R.ranking.map((r) => el("tr", { class: r.flags?.length ? "flagged" : "" }, numCell(r, "rank", parseIntish, 50), nameCells(r, rerender), numCell(r, "damage", parseNum),
+        el("td", { class: "check" }, r.flags?.length ? [
+          el("span", { class: "bad" }, r.flags.join(" ")),
+          ...["name", "damage"].flatMap((field) => (r.alts?.[field] ?? []).map((v) => el("button", { class: "alt", title: `Use ${v}`, onclick: () => { r[field] = v; if (field === "name") Object.assign(r, matchMember(v)); r.flags = []; render(); } }, v))),
+          el("button", { class: "alt ok", onclick: () => { r.flags = []; render(); } }, "Looks right"),
+        ] : el("span", { class: "up" }, "✓")),
+        el("td", {}, el("button", { class: "link", "aria-label": "Remove row", onclick: () => { R.ranking = R.ranking.filter((x) => x !== r); render(); } }, "✕"))))))));
+  const toCheck = R.ranking.filter((r) => r.flags?.length).length;
+  if (toCheck) parts.splice(2, 0, el("div", { class: "note" }, el("b", {}, `${toCheck} ranking row${toCheck === 1 ? "" : "s"} to check (in red). `), "Claude read these differently across frames, or they break the rank order. Pick the right reading or fix the number, then tap Looks right."));
+  const can = (U.include.roster && R.roster.length) || (U.include.invasion && R.ranking.length);
+  parts.push(el("div", { class: "row" },
+    el("button", { class: "primary", disabled: U.saving || !can || null, onclick: () => saveReview(U) }, U.saving ? "Saving…" : `Save for ${U.day}`),
+    U.saveError ? el("span", { class: "bad" }, U.saveError) : null));
+  const out = el("section", { class: "grid" }, parts);
+  out.querySelectorAll("table").forEach(stackTable);
+  return out;
+}
+
+/* ============================== writes ============================== */
+async function resolveMember(row) {
+  const name = row.name.trim(), key = nameKey(name);
+  if (row.memberId !== "new") {
+    const m = S.membersById.get(row.memberId);
+    if (m && !(m.keys ?? []).includes(key)) await gcol("members").doc(m.id).set({ name: m.name, keys: [...(m.keys ?? []), key] });
+    return row.memberId;
+  }
+  const hit = [...S.membersById.values()].find((m) => (m.keys ?? []).includes(key));
+  if (hit) return hit.id;
+  const ref = gcol("members").doc();
+  await ref.set({ name, keys: [key] });
+  S.membersById.set(ref.id, { id: ref.id, name, keys: [key] }); // so later rows in this save match it
+  return ref.id;
+}
+async function saveReview(U) {
+  const R = U.review;
+  if ([...(U.include.roster ? R.roster : []), ...(U.include.invasion ? R.ranking : [])].some((r) => !r.name.trim())) { U.saveError = "Every row needs a name."; render(); return; }
+  U.saving = true; U.saveError = null; render();
+  try {
+    const gid = guildIdFor(R.guild) ?? S.guildId;
+    if (gid !== S.guildId) { rememberGuild(gid); await openGuild(gid); }
+    const gref = S.db.collection("guilds").doc(gid), gsnap = await gref.get();
+    await gref.set({ ...(gsnap.exists ? gsnap.data() : {}), ...(R.guild?.name ? { name: R.guild.name } : {}), updatedAt: new Date().toISOString() });
+    const ref = gcol("days").doc(U.day);
+    const snap = await ref.get();
+    const doc = snap.exists ? JSON.parse(JSON.stringify(snap.data())) : {};
+    const latestRoster = model().latestRoster;
+    if (U.include.roster && R.roster.length) {
+      const rows = [], seen = new Set();
+      for (const r of R.roster) {
+        const id = await resolveMember(r);
+        if (seen.has(id)) continue; seen.add(id);
+        // Keep display names current with the newest member list.
+        const m = S.membersById.get(id);
+        if (m && m.name !== r.name.trim() && (!latestRoster || U.day >= latestRoster)) await gcol("members").doc(id).set({ name: r.name.trim(), keys: m.keys ?? [nameKey(r.name)] });
+        rows.push({ m: id, role: r.role || null, power: parseNum(r.power), att: parseIntish(r.attempts), con: parseNum(r.contribution) });
+      }
+      const g = R.guild;
+      const [gm, gmax] = (g?.members ?? "").split("/").map(parseIntish);
+      const [ge, gemax] = (g?.exp ?? "").split("/").map(parseNum);
+      doc.roster = { rows, savedAt: new Date().toISOString(), guild: g ? { name: g.name || null, level: parseIntish(g.level), members: gm ?? null, maxMembers: gmax ?? null, power: parseNum(g.power), exp: ge ?? null, expMax: gemax ?? null } : null };
+    }
+    if (U.include.invasion && R.ranking.length) {
+      const rows = [], seen = new Set();
+      for (const r of R.ranking) {
+        const id = await resolveMember(r);
+        if (seen.has(id)) continue; seen.add(id);
+        rows.push({ m: id, rank: parseIntish(r.rank), dmg: parseNum(r.damage) });
+      }
+      doc.invasion = { rows, savedAt: new Date().toISOString() };
+    }
+    await ref.set(doc);
+    U.frames.forEach((f) => URL.revokeObjectURL(f.url));
+    const savedInv = U.include.invasion && R.ranking.length;
+    S.upload = null;
+    if (savedInv) { S.invDay = U.day; S.invView = "day"; location.hash = "#invasion"; } else location.hash = "#members";
+  } catch (e) {
+    U.saving = false;
+    U.saveError = e?.code === "quota_exceeded" ? "The page's storage is full." : e?.code === "invalid_argument" ? "You don't have permission to save here." : `Save failed: ${e?.message ?? e}`;
+    render();
+  }
+}
+/** Folds `src` into `dst`; dst's own entry wins on a day both appear. */
+async function mergeMembers(src, dst) {
+  for (const [day, d] of S.days) {
+    let changed = false;
+    const doc = JSON.parse(JSON.stringify(d));
+    for (const part of ["roster", "invasion"]) {
+      const rows = doc[part]?.rows; if (!rows) continue;
+      const hasDst = rows.some((r) => r.m === dst);
+      const next = rows.filter((r) => !(r.m === src && hasDst)).map((r) => r.m === src ? { ...r, m: dst } : r);
+      if (next.length !== rows.length || next.some((r, i) => r.m !== rows[i].m)) { doc[part].rows = next; changed = true; }
+    }
+    if (changed) await gcol("days").doc(day).set(doc);
+  }
+  const a = S.membersById.get(src), b = S.membersById.get(dst);
+  await gcol("members").doc(dst).set({ name: b.name, keys: [...new Set([...(b.keys ?? []), ...(a.keys ?? [])])] });
+  await gcol("members").doc(src).delete();
+}
+
+/* ============================== shell ============================== */
+function render() {
+  const app = $("#app");
+  const loading = !(S.loaded.members && S.loaded.days);
+  for (const a of document.querySelectorAll("#tabs a")) a.toggleAttribute("aria-current", a.dataset.view === (S.view === "member" ? "members" : S.view)) && a.setAttribute("aria-current", "page");
+  $("#tab-upload").hidden = !S.canWrite;
+  if (INFO[S.view]) { app.replaceChildren(viewInfo(S.view)); return; }
+  if (S.view === "settings" && S.db) { app.replaceChildren(viewSettings()); return; }
+  if (!S.db) {
+    app.replaceChildren(el("div", { class: "panel empty" }, el("h2", {}, "Open this page in Claude"), el("p", {}, "Guild records load when this page is opened on claude.ai while signed in.")));
+    return;
+  }
+  if (loading) {
+    app.replaceChildren(el("div", { class: "panel empty" }, el("h2", {}, "Loading guild data…"), el("p", {}, S.offlineNote ? "The guild's records can't be reached yet. They'll appear when the connection returns." : "Connecting to the guild's records.")));
+    return;
+  }
+  const M = model();
+  const lr = M.latestRoster ? S.days.get(M.latestRoster).roster.guild : null;
+  $("#brand-sub").textContent = S.guilds.get(S.guildId)?.name || lr?.name || (S.guildId ? `Guild ${S.guildId}` : "No guild yet");
+  const scrollY = window.scrollY;
+  const view = S.view === "members" ? viewMembers(M) : S.view === "member" ? viewMember(M, S.memberId) : S.view === "invasion" ? viewInvasion(M) : S.view === "upload" ? viewUpload(M) : S.view === "settings" ? viewSettings() : el("div", { class: "grid" }, resetBanner(), viewOverview(M));
+  app.replaceChildren(S.offlineNote ? el("div", { class: "note" }, "These records may be out of date; the connection is slow.") : "", demoBanner(), view);
+  window.scrollTo(0, scrollY);
+}
+function route() {
+  const h = location.hash.slice(1);
+  if (h.startsWith("m-")) { S.view = "member"; S.memberId = h.slice(2); }
+  else S.view = ["overview", "members", "invasion", "upload", "settings"].includes(h) || INFO[h] ? h : "overview";
+  render();
+  if (h.startsWith("m-") || h === "upload" || h === "settings" || INFO[h]) window.scrollTo(0, 0);
+}
+window.addEventListener("hashchange", route);
+matchMedia("(max-width: 640px)").addEventListener("change", () => render());
+window.addEventListener("paste", (e) => { if (S.view === "upload" && S.canWrite && e.clipboardData?.files?.length) addFiles(e.clipboardData.files); });
+
+/* ============================== guilds ============================== */
+let guildUnsubs = [];
+/** Shows one guild's records; resolves once its members and days have arrived. */
+function openGuild(gid) {
+  guildUnsubs.forEach((u) => typeof u === "function" && u()); guildUnsubs = [];
+  Object.assign(S, { guildId: gid ?? null, membersById: new Map(), days: new Map(), config: {}, loaded: { members: false, days: false }, offlineNote: false, invDay: null });
+  if (!gid) { S.loaded = { members: true, days: true }; render(); return Promise.resolve(); }
+  render();
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => { S.offlineNote = true; render(); }, 10000);
+    const settle = () => { if (S.loaded.members && S.loaded.days) { clearTimeout(timer); S.offlineNote = false; resolve(); } };
+    const mine = (fn) => (...a) => { if (S.guildId === gid) fn(...a); }; // ignore late snapshots from a guild we left
+    guildUnsubs.push(gcol("members").onSnapshot(mine((snap) => {
+      S.membersById = new Map(snap.docs.map((d) => [d.id, { id: d.id, ...d.data() }]));
+      S.loaded.members = true; settle(); render();
+    }), mine(() => { S.loaded.members = true; settle(); render(); })));
+    guildUnsubs.push(gcol("days").onSnapshot(mine((snap) => {
+      S.days = new Map(snap.docs.map((d) => [d.id, d.data()]));
+      S.loaded.days = true; settle(); render();
+    }), mine(() => { S.loaded.days = true; settle(); render(); })));
+    guildUnsubs.push(gcol("config").onSnapshot(mine((snap) => { S.config = snap.docs.find((d) => d.id === "guild")?.data() ?? {}; render(); }), () => {}));
+  });
+}
+/** The guild a scan belongs to: its ID from the header, else a known guild with the same name. */
+function guildIdFor(g) {
+  if (!g) return null;
+  if (/^\d{4,}$/.test(g.id ?? "")) return g.id;
+  const k = g.name ? nameKey(g.name) : null;
+  return k ? [...S.guilds.entries()].find(([, v]) => v.name && nameKey(v.name) === k)?.[0] ?? null : null;
+}
+function openGuildSheet() {
+  const dlg = el("dialog", { class: "sheet", "aria-labelledby": "guild-title" });
+  const list = [...S.guilds.entries()].sort((a, b) => String(a[1].name ?? a[0]).localeCompare(String(b[1].name ?? b[0])));
+  dlg.append(el("div", { class: "in" },
+    el("h2", { id: "guild-title" }, "Guilds on this page"),
+    el("p", { class: "sub", style: "margin:0" }, "Your guild is set by your first Guild Members scan. A scan from another guild switches you to that guild on this device."),
+    list.length ? el("div", { class: "guild-list" }, list.map(([id, g]) => el("button", { type: "button", "aria-current": String(id === S.guildId),
+      onclick: () => { rememberGuild(id); openGuild(id); dlg.close(); } }, el("b", {}, g.name || `Guild ${id}`), el("span", { class: "faint" }, `ID ${id}`))))
+      : el("p", { class: "faint", style: "margin:0" }, "No guilds yet. Upload a Guild Members recording to add yours."),
+    el("div", { class: "row", style: "justify-content:flex-end" }, el("button", { type: "button", class: "primary", onclick: () => dlg.close() }, "Close"))));
+  dlg.addEventListener("close", () => dlg.remove());
+  dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });
+  document.body.append(dlg);
+  dlg.showModal();
+}
+
+async function boot() {
+  $("#home-btn").addEventListener("click", openHomeSheet);
+  if (DONATE_URL) $("#donate").href = DONATE_URL;
+  else $("#donate").addEventListener("click", (e) => e.preventDefault()); // placeholder until DONATE_URL is set
+  route();
+  if (!window.claude?.use) return render();
+  const [db, user, sample] = await Promise.all([claude.use("db"), claude.use("user"), claude.use("sample")]);
+  S.db = db; S.user = user; S.sample = sample;
+  if (user) {
+    const w = await user.can("data.write");
+    S.canWrite = w === null ? true : w; // null: platform didn't say; let a refused write decide
+  }
+  if (!db) return render();
+  $("#guild-chip").addEventListener("click", openGuildSheet);
+  let first = true;
+  db.collection("guilds").onSnapshot((snap) => {
+    S.guilds = new Map(snap.docs.map((d) => [d.id, d.data()]));
+    if (first) {
+      first = false;
+      // This device's guild if it has one, else the guild updated most recently.
+      const latest = [...S.guilds.entries()].sort((a, b) => String(b[1].updatedAt ?? "").localeCompare(String(a[1].updatedAt ?? "")))[0]?.[0] ?? null;
+      const mine = myGuild();
+      openGuild(mine && S.guilds.has(mine) ? mine : latest);
+    } else render();
+  }, () => { if (first) { first = false; openGuild(myGuild()); } });
+  // Keep the reset countdown current while Overview is open.
+  setInterval(() => { if (S.view === "overview" && !document.hidden) render(); }, 60000);
+}
+boot();
+</script>
+</body>
+</html>

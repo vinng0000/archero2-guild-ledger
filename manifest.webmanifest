@@ -1,0 +1,14 @@
+{
+  "name": "Guild Ledger · Archero 2 guild tracker",
+  "short_name": "Guild Ledger",
+  "description": "Daily Archero 2 guild records: member power, contribution, Monster Invasion attempts and damage rankings.",
+  "start_url": "./#overview",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#121120",
+  "theme_color": "#121120",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
