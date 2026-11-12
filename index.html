@@ -607,6 +607,19 @@ function tile(label, value, hint) {
 function panel(title, extra, ...body) {
   return el("section", { class: "panel" }, el("div", { class: "head" }, el("h2", {}, title), extra), el("div", { class: "body" }, ...body));
 }
+/** Records live in one browser, so results are shared by pasting them into the guild's Discord.
+    Discord caps a message at 2000 characters: longer text is cut at a line break. */
+function copyButton(lines) {
+  const btn = el("button", { class: "copy-discord", onclick: async () => {
+    let text = lines().filter((l) => l != null && l !== false).join("\n");
+    if (text.length > 1990) text = text.slice(0, text.lastIndexOf("\n", 1980)) + "\n…";
+    try { await navigator.clipboard.writeText(text); btn.textContent = "Copied"; }
+    catch { btn.textContent = "Copy failed"; }
+    setTimeout(() => { btn.textContent = "Copy for Discord"; }, 1600);
+  } }, "Copy for Discord");
+  return btn;
+}
+const guildTitle = () => S.guilds?.get?.(S.guildId)?.name ?? "";
 const memberLink = (id, name) => el("a", { class: "name", href: `#m-${id}` }, name ?? memberName(id));
 
 function emptyState() {
@@ -674,7 +687,15 @@ function viewOverview(M) {
   const gainers = M.members.filter((m) => m.inLatest && m.power != null && m.p7 != null).map((m) => ({ ...m, gain: m.power - m.p7 })).sort((a, b) => b.gain - a.gain).slice(0, 6);
   const unused = M.members.filter((m) => m.inLatest && m.att != null && m.att < 2).sort((a, b) => a.att - b.att);
 
+  const copy = copyButton(() => [`**${guildTitle() || "Guild"} · ${M.latestRoster ?? M.latestInv}**`,
+    g?.members != null ? `Members: ${g.members}/${g.maxMembers ?? "—"}${g.level != null ? ` · Lv ${g.level}` : ""}` : null,
+    lr ? `Guild power: ${fmt(powerOf(M.latestRoster))}` : null,
+    inv ? `Invasion damage (${M.latestInv}): ${fmt(totalDmg)} from ${inv.rows.length} members` : null,
+    inv?.rows.length ? `Top damage: ${inv.rows.slice(0, 3).map((r, i) => `${r.rank ?? i + 1}. ${memberName(r.m)} ${fmt(r.dmg)}`).join(" · ")}` : null,
+    lr ? (unused.length ? `Attempts not used: ${unused.map((m) => `${m.name} ${m.att}/2`).join(", ")}` : "Everyone used both attempts.") : null,
+    gainers.length ? `Biggest power gains (7 days): ${gainers.slice(0, 3).map((m) => `${m.name} +${fmt(m.gain)}`).join(" · ")}` : null]);
   return el("div", { class: "grid" },
+    el("div", { class: "row" }, el("h1", {}, "Overview"), el("span", { style: "margin-left:auto" }, copy)),
     el("div", { class: "grid g4" },
       tile("Members", g?.members != null ? `${g.members}/${g.maxMembers ?? "—"}` : lr ? lr.rows.length : "—", M.latestRoster ? `Lv ${g?.level ?? "—"} · as of ${M.latestRoster}` : "No member list yet"),
       tile("Guild power", fmt(lr ? powerOf(M.latestRoster) : null), g?.exp != null && g.expMax ? `EXP ${fmt(g.exp)} / ${fmt(g.expMax)}` : "From the latest member list"),
@@ -732,7 +753,10 @@ function viewMembers(M) {
   }));
   const search = el("input", { id: "member-search", type: "search", placeholder: "Search name", value: S.search, oninput: (e) => { S.search = e.target.value; render(); queueMicrotask(() => { const i = $("#member-search"); i?.focus(); i?.setSelectionRange(i.value.length, i.value.length); }); } });
   return el("div", { class: "grid" },
-    el("div", { class: "row" }, el("h1", {}, "Members"), el("span", { class: "sub" }, `Latest member list: ${M.latestRoster ?? "—"} · invasion columns cover the last ${wd} recorded day${wd === 1 ? "" : "s"}`)),
+    el("div", { class: "row" }, el("h1", {}, "Members"), el("span", { class: "sub" }, `Latest member list: ${M.latestRoster ?? "—"} · invasion columns cover the last ${wd} recorded day${wd === 1 ? "" : "s"}`),
+      el("span", { style: "margin-left:auto" }, copyButton(() => [`**${guildTitle() || "Guild"} members · ${M.latestRoster ?? "—"}** (sorted by ${col.label.toLowerCase()})`,
+        "_name — power · contribution · invasion attempts_",
+        ...rows.map((m, i) => `${i + 1}. ${m.name} — ${fmt(m.power)} · ${fmt(m.con)} · ${m.att == null ? "—" : `${m.att}/2`}`)]))),
     el("div", { class: "row" }, search, isPhone() ? sortPick : null,
       former.length ? el("label", { class: "sub" }, el("input", { type: "checkbox", id: "show-former", checked: S.showFormer || null, onchange: (e) => { S.showFormer = e.target.checked; render(); } }), ` Show ${former.length} not on the latest list`) : null,
       el("span", { class: "faint", style: "margin-left:auto" }, `${rows.length} shown`)),
@@ -761,8 +785,15 @@ function viewMember(M, id) {
   const dmg = inv.map((i) => i.dmg).filter((v) => v != null);
   const others = [...S.membersById.values()].filter((o) => o.id !== id).sort((a, b) => a.name.localeCompare(b.name));
   return el("div", { class: "grid" },
-    el("div", {}, el("a", { href: "#members", class: "sub" }, "← Members"), el("h1", { style: "margin-top:4px" }, m.name),
-      el("div", { class: "sub" }, `${latest?.role ?? "—"} · as of ${latest?.day ?? "never"}`)),
+    el("div", { class: "row", style: "align-items:flex-end" },
+      el("div", {}, el("a", { href: "#members", class: "sub" }, "← Members"), el("h1", { style: "margin-top:4px" }, m.name),
+        el("div", { class: "sub" }, `${latest?.role ?? "—"} · as of ${latest?.day ?? "never"}`)),
+      el("span", { style: "margin-left:auto" }, copyButton(() => [`**${m.name}**${latest?.role ? ` · ${latest.role}` : ""} · as of ${latest?.day ?? "—"}`,
+        `Power: ${fmt(latest?.power)}${latest?.power != null && first?.power != null && first.day !== latest.day ? ` (${latest.power - first.power >= 0 ? "+" : ""}${fmt(latest.power - first.power)} since ${first.day})` : ""}`,
+        `Contribution: ${fmt(latest?.con)}`,
+        latest?.att != null ? `Invasion attempts: ${latest.att}/2` : null,
+        `Invasion: ${inv.length} days · avg ${fmt(dmg.length ? dmg.reduce((a, b) => a + b, 0) / dmg.length : null)}${dmg.length ? ` · best ${fmt(Math.max(...dmg))}` : ""}`,
+        ...inv.slice(-7).reverse().map((i) => `  ${i.day}: #${i.rank ?? "—"} · ${fmt(i.dmg)}`)]))),
     el("div", { class: "grid g4" },
       tile("Power", fmt(latest?.power), el("span", {}, `since ${first?.day ?? "—"}: `, delta(latest?.power != null && first?.power != null ? latest.power - first.power : null))),
       tile("Contribution", fmt(latest?.con), latest ? `on ${latest.day}` : ""),
@@ -813,6 +844,8 @@ function viewInvasion(M) {
     const ids = new Map();
     for (const d of days) for (const r of S.days.get(d).invasion.rows) ids.set(r.m, (ids.get(r.m) ?? 0) + (r.dmg ?? 0));
     const order = [...ids.entries()].sort((a, b) => b[1] - a[1]);
+    head.append(copyButton(() => [`**Monster Invasion · ${days[0]} to ${days.at(-1)}** (${days.length} days)`,
+      ...order.map(([id, t], idx) => { const n = days.filter((d) => S.days.get(d).invasion.rows.some((x) => x.m === id)).length; return `${idx + 1}. ${memberName(id)} — ${fmt(t)} (${n}/${days.length} days)`; })]));
     return el("div", { class: "grid" }, head, el("div", { class: "panel scroll" }, el("table", {},
       el("thead", {}, el("tr", {}, el("th", { class: "sticky-col" }, "Name"), days.map((d) => el("th", { class: "n" }, shortDay(d))), el("th", { class: "n" }, "Total"))),
       el("tbody", {}, order.map(([id, total]) => el("tr", {}, el("td", { class: "sticky-col" }, memberLink(id)),
@@ -822,17 +855,10 @@ function viewInvasion(M) {
   const { rows, prevDay, missing } = invasionDay(M, S.invDay);
   const top = rows[0]?.dmg ?? 0;
   const total = rows.reduce((s, r) => s + (r.dmg ?? 0), 0);
-  // Records live in one browser, so the ranking is shared by pasting it into the guild chat.
-  const copyText = [`**Monster Invasion · ${S.invDay}**`,
+  head.append(copyButton(() => [`**Monster Invasion · ${S.invDay}**`,
     ...rows.map((r, idx) => `${r.rank ?? idx + 1}. ${memberName(r.m)} — ${fmt(r.dmg)}`),
     `Total: ${fmt(total)}`,
-    missing.length ? `No damage: ${missing.map(memberName).join(", ")}` : null].filter(Boolean).join("\n");
-  const copyBtn = el("button", { onclick: async () => {
-    try { await navigator.clipboard.writeText(copyText); copyBtn.textContent = "Copied"; }
-    catch { copyBtn.textContent = "Copy failed"; }
-    setTimeout(() => { copyBtn.textContent = "Copy for Discord"; }, 1600);
-  } }, "Copy for Discord");
-  head.append(copyBtn);
+    missing.length ? `No damage: ${missing.map(memberName).join(", ")}` : null]));
   return el("div", { class: "grid" }, head,
     el("div", { class: "grid g3" },
       el("div", { class: "panel scroll" }, el("table", { class: "inv-table" },
